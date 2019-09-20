@@ -9,6 +9,7 @@ from dronekit import connect, VehicleMode
 # Connect to the Vehicle.
 print("Connecting to vehicle on: %s" % (connection_string,))
 vehicle = connect(connection_string, wait_ready=True)
+# vehicle = connect('/dev/ttyAMA0', wait_ready=True, baud=57600)
 
 # Get some vehicle attributes (state)
 print "Get some vehicle attribute values:"

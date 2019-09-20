@@ -2,12 +2,15 @@ from dronekit import connect, VehicleMode
 import dronekit_sitl
 import time
 
+TARGET_ALTITUDE = 20 # Meters
+
 # Start simulated drone
 sitl = dronekit_sitl.start_default()
 connection_string = sitl.connection_string()
 
 # Connect to the Vehicle (in this case a simulator running the same computer)
 vehicle = connect('tcp:127.0.0.1:5760', wait_ready=True)
+
 
 def arm_and_takeoff(aTargetAltitude):
     """
@@ -44,4 +47,16 @@ def arm_and_takeoff(aTargetAltitude):
             break
         time.sleep(1)
 
-arm_and_takeoff(20)
+
+def land():
+    print "Landing..."
+    vehicle.mode = VehicleMode("LAND")
+
+
+def main():
+    arm_and_takeoff(5)
+    land()
+
+
+if __name__ == "__main__":
+    main()
