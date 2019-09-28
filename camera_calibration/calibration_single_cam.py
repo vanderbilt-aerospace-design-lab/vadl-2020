@@ -28,8 +28,8 @@ CB_COLS = 9
 CB_ROWS = 7
 CB_SQUARE_SIZE = 19
 IMG_SIZE = (480, 640)
-OPEN_PATH = "./calibration_images/camera_b/"
-SAVE_PATH = "./calibration_data/camera_b.yaml"
+OPEN_PATH = "./calibration_images_alex_laptop/"
+SAVE_PATH = "./calibration_data/alex_laptop_camera.yaml"
 
 # termination criteria for finding sub-pixel corner positions
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
