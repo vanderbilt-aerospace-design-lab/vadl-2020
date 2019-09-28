@@ -77,14 +77,14 @@ for fname in fnames:
             image_points.append(better_corners)
 
             # Done with this frame
-            print "-- processed " + fname + " --"
+            print("-- processed " + fname + " --")
 
         # Otherwise, skip the frame
         else:
-            print "-- skipped frame " + fname + " --"
+            print("-- skipped frame " + fname + " --")
 
     else:
-        print "-- unable to find corners in " + fname + ", skipped frame --"
+        print("-- unable to find corners in " + fname + ", skipped frame --")
 
 cv2.destroyAllWindows()
 
@@ -93,12 +93,12 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, 
                                                    None, None, flags=cv2.CALIB_ZERO_TANGENT_DIST)
 
 # Print results
-print "\n=========\n RESULTS\n=========\n"
-print "Dist. Coeffifients: "
-print dist
-print "\nCamera Matrix"
-print mtx
-print "\nData saved to " + SAVE_PATH
+print("\n=========\n RESULTS\n=========\n")
+print("Dist. Coeffifients: ")
+print(dist)
+print("\nCamera Matrix")
+print(mtx)
+print("\nData saved to " + SAVE_PATH)
 
 # Save calibration camera matrix and distortion coefficients to file for later use
 data = {"camera_matrix": np.asarray(mtx).tolist(),
