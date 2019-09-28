@@ -27,31 +27,59 @@ def create_and_save_marker(dict):
         cv2.destroyAllWindows()
 
 
-# Read images from camera
-cap = cv2.VideoCapture(0)
+def track_aruco_marker_visualize():
+    # Read images from camera
+    cap = cv2.VideoCapture(0)
 
-while(True):
-    # Capture frame-by-frame
-    ret, img = cap.read()
+    while(True):
+        # Capture frame-by-frame
+        ret, img = cap.read()
 
-    corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=aruco_param)
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=aruco_param)
 
-    # If a marker is found, estimate the pose
-    if ids is not None:
-        corners = corners[0] # Corners are given clockwise (starts where?)
-        rvec, tvec, _objPoints = aruco.estimatePoseSingleMarkers(corners, MARKER_LENGTH, cameraMatrix, distCoeffs)
-        print(tvec)
+        # If a marker is found, estimate the pose
+        if ids is not None:
+            corners = corners[0] # Corners are given clockwise (starts where?)
+            rvec, tvec, _objPoints = aruco.estimatePoseSingleMarkers(corners, MARKER_LENGTH, cameraMatrix, distCoeffs)
+            print(tvec)
 
-        # Draw axis for debugging
-        img = aruco.drawAxis(img, cameraMatrix, distCoeffs, rvec, tvec, 0.1)
+            # Draw axis for debugging
+            img = aruco.drawAxis(img, cameraMatrix, distCoeffs, rvec, tvec, 0.1)
 
-    # Display the resulting frame
-    cv2.imshow('frame', img)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        # Display the resulting frame
+        cv2.imshow('frame', img)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-# When everything done, release the capture
-cap.release()
-cv2.destroyAllWindows()
+    # When everything done, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+def track_aruco_marker(cap):
+
+
+    while (True):
+        # Capture frame-by-frame
+        ret, img = cap.read()
+
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=aruco_param)
+
+        # If a marker is found, estimate the pose
+        if ids is not None:
+            corners = corners[0]  # Corners are given clockwise (starts where?)
+            rvec, tvec, _objPoints = aruco.estimatePoseSingleMarkers(corners, MARKER_LENGTH, cameraMatrix, distCoeffs)
+
+            return 0, rvec, tvec
+
+        # Signify no marker is detected
+        return -1, 0, 0
+
+
+def main():
+    track_aruco_marker_visualize()
+
+if __name__ == "__main__":
+    main()
 
 
