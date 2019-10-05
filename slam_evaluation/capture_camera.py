@@ -81,6 +81,7 @@ while True:
             gps_ct += 1
 
         if not vehicle.armed:
+            np.save(GPS_NPY_FILE_BASE + "_{}".format(gps_ct), np.array(pose))
             break
 
 # When everything done, release the capture
