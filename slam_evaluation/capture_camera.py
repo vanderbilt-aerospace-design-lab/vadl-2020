@@ -29,8 +29,6 @@ if not connection_string:
 print("\nConnecting to vehicle on: %s" % connection_string)
 vehicle = connect(connection_string, wait_ready=True)
 
-vehicle.wait_ready('autopilot_version')
-
 # Wait for the vehicle to be armed
 while not vehicle.armed:
     print("Waiting for armed")
@@ -42,6 +40,7 @@ while not vehicle.home_location:
     cmds.download()
     cmds.wait_ready()
     print("Waiting for home location")
+    time.sleep(0.5)
 
 ct = 0
 gps_ct = 0
@@ -49,9 +48,9 @@ pose = []
 start_time = time.time()
 
 # Define video capture and writer
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter(CAMERA_VIDEO_FILE, fourcc, 20.0, (800, 600))
+out = cv2.VideoWriter(CAMERA_VIDEO_FILE, fourcc, 30.0, (640, 480))
 
 while True:
     # Capture image
@@ -61,6 +60,10 @@ while True:
 
         # Write the image
         out.write(img)
+
+        # cv2.imshow('frame', img)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
 
         # Retrieve global GPS coordinates w/ relative alt from vehicle
         # Subtract the home location to obtain full relative coordinates
