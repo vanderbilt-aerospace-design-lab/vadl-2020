@@ -2,11 +2,14 @@ import cv2
 import numpy as np
 
 IMAGE_FILE = 'test_image.jpg'
+CAMERA_VIDEO_FILE = 'videos/depth_estimation_1.mp4'
 BOX_LENGTH = 22 # inches
 FOCAL_LENGTH = 362  # This is just approximate for now
 
 def find_target():
     cap = cv2.VideoCapture(0)
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(CAMERA_VIDEO_FILE, fourcc, 15.0, (640, 480))
 
     while True:
         ret, img = cap.read()
@@ -91,11 +94,15 @@ def find_target():
             cv2.drawContours(img, [c], 0, (0, 255, 0), 3)
             '''        '''
 
+            # Write to video
+            out.write(img)
 
         '''Display thresholded image'''
         cv2.imshow('img', img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+    out.release()
 
 
 def main():
