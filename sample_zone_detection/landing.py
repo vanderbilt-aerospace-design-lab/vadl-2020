@@ -71,9 +71,19 @@ def find_target():
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
 
-            # Find pixel length of one side (assumes a square)
+            # Find the distance to the platform
             pixel_length = peri / 4
             depth = (FOCAL_LENGTH / pixel_length) * BOX_LENGTH
+            scale_factor = BOX_LENGTH / pixel_length
+
+            # Find positional error from center of platform
+            # Pixels
+            err_x = cX - (640/2)
+            err_y = (480/2) - cY
+
+            # Convert to inches
+            err_x *= scale_factor
+            err_y *= scale_factor
 
             '''Visualize'''
             # Draw extreme points on image
@@ -90,6 +100,11 @@ def find_target():
             # Draw depth
             cv2.putText(img, "Distance: {}".format(np.around(depth, 1)), (cX - 40, cY - 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+            # Draw XY error
+            cv2.putText(img, "XY Error: {}, {}".format(np.around(err_x, 1), np.around(err_y, 1)), (cX - 40, cY - 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
             # Draw contours on image
             cv2.drawContours(img, [c], 0, (0, 255, 0), 3)
             '''        '''
