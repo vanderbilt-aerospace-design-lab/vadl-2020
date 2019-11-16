@@ -7,7 +7,7 @@ BOX_LENGTH = 22 # inches
 FOCAL_LENGTH = 362  # This is just approximate for now
 
 def find_target():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(CAMERA_VIDEO_FILE, fourcc, 15.0, (640, 480))
 
