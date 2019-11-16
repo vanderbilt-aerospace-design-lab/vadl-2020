@@ -26,10 +26,10 @@ import numpy as np
 # PARAMETERS FOR OUR SETUP - MAKE SURE THESE ARE CORRECT
 CB_COLS = 9
 CB_ROWS = 7
-CB_SQUARE_SIZE = 19
+CB_SQUARE_SIZE = 19.6
 IMG_SIZE = (480, 640)
-OPEN_PATH = "./calibration_images_alex_laptop/"
-SAVE_PATH = "./calibration_data/alex_laptop_camera.yaml"
+OPEN_PATH = "./calibration_images_fisheye/"
+SAVE_PATH = "./calibration_data/fisheye.yaml"
 
 # termination criteria for finding sub-pixel corner positions
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -88,7 +88,7 @@ for fname in fnames:
 
 cv2.destroyAllWindows()
 
-# Calibrate using the corner data
+# Calibrate using the corner gps_data
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, IMG_SIZE,
                                                    None, None, flags=cv2.CALIB_ZERO_TANGENT_DIST)
 
