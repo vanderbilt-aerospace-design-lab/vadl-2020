@@ -1,15 +1,25 @@
 from dronekit import connect, VehicleMode
-import dronekit_sitl
 import time
 
-TARGET_ALTITUDE = 20 # Meters
+''' Test script for auto takeoff and landing'''
 
-# Start simulated drone
-sitl = dronekit_sitl.start_default()
-connection_string = sitl.connection_string()
-
+TARGET_ALTITUDE = 5 # Meters
+CONNECTION_STRING = ""
 # Connect to the Vehicle (in this case a simulator running the same computer)
 vehicle = connect('tcp:127.0.0.1:5760', wait_ready=True)
+
+# Vehicle callback to enable manual override
+@vehicle.on_attribute('mode')
+def decorated_mode_callback(self, attr_name, value):
+    # `attr_name` is the observed attribute (used if callback is used for multiple attributes)
+    # `attr_name` - the observed attribute (used if callback is used for multiple attributes)
+    # `value` is the updated attribute value.
+    print(" CALLBACK: Mode changed to", value)
+
+    # Close vehicle object before exiting script
+    print("Closing vehicle object")
+    vehicle.close()
+    exit(0)
 
 
 def arm_and_takeoff(aTargetAltitude):
@@ -52,9 +62,13 @@ def land():
     print "Landing..."
     vehicle.mode = VehicleMode("LAND")
 
+    # Close vehicle object before exiting script
+    print("Closing vehicle object")
+    vehicle.close()
+
 
 def main():
-    arm_and_takeoff(5)
+    arm_and_takeoff(TARGET_ALTITUDE)
     land()
 
 
