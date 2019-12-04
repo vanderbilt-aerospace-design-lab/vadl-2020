@@ -3,10 +3,11 @@ import time
 
 ''' Test script for auto takeoff and landing'''
 
-TARGET_ALTITUDE = 5 # Meters
-CONNECTION_STRING = ""
+TARGET_ALTITUDE = 3 # Meters
+CONNECTION_STRING = "/dev/ttyAMA0"
 # Connect to the Vehicle (in this case a simulator running the same computer)
-vehicle = connect('tcp:127.0.0.1:5760', wait_ready=True)
+print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
+vehicle = connect(CONNECTION_STRING, wait_ready=True)
 
 # Vehicle callback to enable manual override
 @vehicle.on_attribute('mode')

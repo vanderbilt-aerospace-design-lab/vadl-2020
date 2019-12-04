@@ -12,29 +12,12 @@ Full documentation is provided at http://python.dronekit.io/examples/simple_goto
 
 from __future__ import print_function
 import time
-from dronekit import connect, VehicleMode, LocationGlobalRelative
-
-# # Set up option parsing to get connection string
-# import argparse
-# parser = argparse.ArgumentParser(description='Commands vehicle using vehicle.simple_goto.')
-# parser.add_argument('--connect',
-#                     help="Vehicle connection target string. If not specified, SITL automatically started and used.")
-# args = parser.parse_args()
-#
-# connection_string = args.connect
-sitl = None
-#
-#
-# # Start SITL if no connection string specified
-# if not connection_string:
-#     import dronekit_sitl
-#     sitl = dronekit_sitl.start_default()
-#     connection_string = sitl.connection_string()
-
+import dronekit
+from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal
 
 # Connect to the Vehicle
-TARGET_ALTITUDE = 5 # Meters
-CONNECTION_STRING = ""
+TARGET_ALTITUDE = 3 # Meters
+CONNECTION_STRING = "/dev/ttyAMA0"
 print('Connecting to vehicle on: %s' % CONNECTION_STRING)
 vehicle = connect(CONNECTION_STRING, wait_ready=True)
 
@@ -92,7 +75,10 @@ def simple_goto():
     vehicle.airspeed = 3
 
     print("Going towards first point for 30 seconds ...")
-    point1 = LocationGlobalRelative(-35.361354, 149.165218, 20)
+    lat = vehicle.location.global_relative_frame.lat + 2
+    lon = vehicle.location.global_relative_frame.lon + 2
+    point1 = LocationGlobalRelative(lat, lon, vehicle.location.global_relative_frame.alt)
+    # point1 = LocationLocal(2, 2, 0)
     vehicle.simple_goto(point1)
 
     # sleep so we can see the change in map
@@ -113,10 +99,6 @@ def rtl():
     # Close vehicle object before exiting script
     print("Close vehicle object")
     vehicle.close()
-
-    # Shut down simulator if it was started.
-    if sitl:
-        sitl.stop()
 
 def main():
     arm_and_takeoff(TARGET_ALTITUDE)

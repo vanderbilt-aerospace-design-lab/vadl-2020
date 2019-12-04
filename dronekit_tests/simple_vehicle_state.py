@@ -16,27 +16,11 @@ import time
 
 # Set up option parsing to get connection string
 import argparse
-
-parser = argparse.ArgumentParser(
-    description='Print out vehicle state information. Connects to SITL on local PC by default.')
-parser.add_argument('--connect',
-                    help="vehicle connection target string. If not specified, SITL automatically started and used.")
-args = parser.parse_args()
-
-connection_string = args.connect
-sitl = None
-
-# Start SITL if no connection string specified
-if not connection_string:
-    import dronekit_sitl
-
-    sitl = dronekit_sitl.start_default()
-    connection_string = sitl.connection_string()
-
+CONNECTION_STRING = "/dev/ttyAMA0"
 # Connect to the Vehicle.
 #   Set `wait_ready=True` to ensure default attributes are populated before `connect()` returns.
-print("\nConnecting to vehicle on: %s" % connection_string)
-vehicle = connect(connection_string, wait_ready=True)
+print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
+vehicle = connect(CONNECTION_STRING, wait_ready=True)
 
 vehicle.wait_ready('autopilot_version')
 
@@ -90,10 +74,6 @@ print(" Armed: %s" % vehicle.armed)  # settable
 # Close vehicle object before exiting script
 print("\nClose vehicle object")
 vehicle.close()
-
-# Shut down simulator if it was started.
-if sitl is not None:
-    sitl.stop()
 
 print("Completed")
 
