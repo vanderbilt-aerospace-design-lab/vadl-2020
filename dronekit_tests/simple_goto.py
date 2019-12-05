@@ -45,6 +45,7 @@ if args.sitl:
     vehicle.parameters['ARMING_CHECK'] = 0
 if args.indoors:
     vehicle.parameters['ARMING_CHECK'] = 2+4+16+64 # Disable GPS Lock required
+    print("disabled GPS lock")
 
 # Vehicle callback to enable manual override
 @vehicle.on_attribute('mode')
