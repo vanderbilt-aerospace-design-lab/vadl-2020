@@ -23,6 +23,8 @@ from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal
 parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
 parser.add_argument('--sitl',
                    help="Vehicle connection target string. If specified, SITL will be used.")
+parser.add_argument('--indoors',
+                   help="Vehicle connection target string. If specified, SITL will be used.")
 args = parser.parse_args()
 
 sitl = None
@@ -38,8 +40,11 @@ else:
 TARGET_ALTITUDE = 0.25 # Meters
 print('Connecting to vehicle on: %s' % CONNECTION_STRING)
 vehicle = connect(CONNECTION_STRING, wait_ready=True)
+
 if args.sitl:
     vehicle.parameters['ARMING_CHECK'] = 0
+if args.indoors:
+    vehicle.parameters['ARMING_CHECK'] = 2+4+16+64 # Disable GPS Lock required
 
 # Vehicle callback to enable manual override
 @vehicle.on_attribute('mode')
