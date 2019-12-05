@@ -23,7 +23,7 @@ if args.sitl:
 else:
     CONNECTION_STRING = "/dev/ttyAMA0"
 
-TARGET_ALTITUDE = 0.1 # Meters
+TARGET_ALTITUDE = 0.25 # Meters
 
 # Connect to the Vehicle
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
