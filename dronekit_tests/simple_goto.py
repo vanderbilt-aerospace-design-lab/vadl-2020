@@ -12,8 +12,10 @@ Full documentation is provided at http://python.dronekit.io/examples/simple_goto
 
 from __future__ import print_function
 import time
+import math
+from pymavlink import mavutil
 import dronekit
-from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal
+from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal, LocationGlobal
 
 # Connect to the Vehicle
 TARGET_ALTITUDE = 0.25 # Meters
@@ -79,7 +81,33 @@ def get_distance_metres(aLocation1, aLocation2):
     dlong = aLocation2.lon - aLocation1.lon
     return math.sqrt((dlat*dlat) + (dlong*dlong)) * 1.113195e5
 
+def goto_position_target_local_ned(north, east, down):
+    """
+    Send SET_POSITION_TARGET_LOCAL_NED command to request the vehicle fly to a specified
+    location in the North, East, Down frame.
 
+    It is important to remember that in this frame, positive altitudes are entered as negative
+    "Down" values. So if down is "10", this will be 10 metres below the home altitude.
+
+    Starting from AC3.3 the method respects the frame setting. Prior to that the frame was
+    ignored. For more information see:
+    http://dev.ardupilot.com/wiki/copter-commands-in-guided-mode/#set_position_target_local_ned
+
+    See the above link for information on the type_mask (0=enable, 1=ignore).
+    At time of writing, acceleration and yaw bits are ignored.
+
+    """
+    msg = vehicle.message_factory.set_position_target_local_ned_encode(
+        0,       # time_boot_ms (not used)
+        0, 0,    # target system, target component
+        mavutil.mavlink.MAV_FRAME_LOCAL_OFFSET_NED, # frame
+        0b0000111111111000, # type_mask (only positions enabled)
+        north, east, down, # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
+        0, 0, 0, # x, y, z velocity in m/s  (not used)
+        0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
+        0, 0)    # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
+    # send command to vehicle
+    vehicle.send_mavlink(msg)
 
 def goto(dNorth, dEast, gotoFunction=vehicle.simple_goto):
     """
@@ -106,7 +134,7 @@ def goto(dNorth, dEast, gotoFunction=vehicle.simple_goto):
         print("Distance to target: ", remainingDistance)
         if remainingDistance<=targetDistance*0.01: #Just below target, in case of undershoot.
             print("Reached target")
-            break;
+            break
         time.sleep(2)
         
 def arm_and_takeoff(aTargetAltitude):
@@ -148,23 +176,12 @@ def simple_goto():
     print("Set default/target airspeed to 3")
     vehicle.airspeed = 0.25
 
-    print("Going towards first point for 30 seconds ...")
-    lat = vehicle.location.global_relative_frame.lat + 2
-    lon = vehicle.location.global_relative_frame.lon + 2
-    point1 = LocationGlobalRelative(lat, lon, vehicle.location.global_relative_frame.alt)
-    # point1 = LocationLocal(2, 2, 0)
-    vehicle.simple_goto(point1)
+    # TODO: Test out both goto methods
+    goto(2,2)
+    # goto_position_target_local_ned(2,2,0)
 
     # sleep so we can see the change in map
     time.sleep(30)
-
-    print("Going towards second point for 30 seconds (groundspeed set to 10 m/s) ...")
-    point2 = LocationGlobalRelative(-35.363244, 149.168801, 20)
-    vehicle.simple_goto(point2, groundspeed=10)
-
-    # sleep so we can see the change in map
-    time.sleep(30)
-
 
 def rtl():
     print("Returning to Launch")
@@ -178,7 +195,6 @@ def main():
     arm_and_takeoff(TARGET_ALTITUDE)
     simple_goto()
     rtl()
-
 
 if __name__ == "__main__":
     main()
