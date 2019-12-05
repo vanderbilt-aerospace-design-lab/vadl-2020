@@ -16,7 +16,7 @@ import dronekit
 from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal
 
 # Connect to the Vehicle
-TARGET_ALTITUDE = 3 # Meters
+TARGET_ALTITUDE = 0.25 # Meters
 CONNECTION_STRING = "/dev/ttyAMA0"
 print('Connecting to vehicle on: %s' % CONNECTION_STRING)
 vehicle = connect(CONNECTION_STRING, wait_ready=True)
@@ -72,7 +72,7 @@ def arm_and_takeoff(aTargetAltitude):
 
 def simple_goto():
     print("Set default/target airspeed to 3")
-    vehicle.airspeed = 3
+    vehicle.airspeed = 0.25
 
     print("Going towards first point for 30 seconds ...")
     lat = vehicle.location.global_relative_frame.lat + 2
