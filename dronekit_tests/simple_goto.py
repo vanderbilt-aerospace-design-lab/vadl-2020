@@ -13,15 +13,33 @@ Full documentation is provided at http://python.dronekit.io/examples/simple_goto
 from __future__ import print_function
 import time
 import math
+import argparse
 from pymavlink import mavutil
 import dronekit
+import dronekit_sitl
 from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal, LocationGlobal
+
+#Set up option parsing to get connection string
+parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
+parser.add_argument('--sitl',
+                   help="Vehicle connection target string. If specified, SITL will be used.")
+args = parser.parse_args()
+
+sitl = None
+
+#Start SITL if connection string specified
+if args.sitl:
+    sitl = dronekit_sitl.start_default()
+    CONNECTION_STRING = sitl.connection_string()
+else:
+    CONNECTION_STRING = "/dev/ttyAMA0"
 
 # Connect to the Vehicle
 TARGET_ALTITUDE = 0.25 # Meters
-CONNECTION_STRING = "/dev/ttyAMA0"
 print('Connecting to vehicle on: %s' % CONNECTION_STRING)
 vehicle = connect(CONNECTION_STRING, wait_ready=True)
+if args.sitl:
+    vehicle.parameters['ARMING_CHECK'] = 0
 
 # Vehicle callback to enable manual override
 @vehicle.on_attribute('mode')
@@ -31,10 +49,10 @@ def decorated_mode_callback(self, attr_name, value):
     # `value` is the updated attribute value.
     print(" CALLBACK: Mode changed to", value)
 
-    # Close vehicle object before exiting script
-    print("Closing vehicle object")
-    vehicle.close()
-    exit(0)
+    # Pause script until GUIDED mode is back
+    print("Waiting to be switched back into GUIDED")
+    while vehicle.mode is not VehicleMode("GUIDED"):
+        time.sleep(1)
 
 
 def get_location_metres(original_location, dNorth, dEast):
