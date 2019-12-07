@@ -19,7 +19,7 @@ from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal
 TARGET_ALTITUDE = 3 # Meters
 CONNECTION_STRING = "/dev/ttyAMA0"
 print('Connecting to vehicle on: %s' % CONNECTION_STRING)
-vehicle = connect(CONNECTION_STRING, wait_ready=True)
+vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600)
 
 # Vehicle callback to enable manual override
 @vehicle.on_attribute('mode')

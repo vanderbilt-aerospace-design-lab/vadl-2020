@@ -3,11 +3,11 @@ import time
 
 ''' Test script for auto takeoff and landing'''
 
-TARGET_ALTITUDE = 3 # Meters
+TARGET_ALTITUDE = 1 # Meters
 CONNECTION_STRING = "/dev/ttyAMA0"
 # Connect to the Vehicle (in this case a simulator running the same computer)
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
-vehicle = connect(CONNECTION_STRING, wait_ready=True)
+vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600)
 
 # Vehicle callback to enable manual override
 @vehicle.on_attribute('mode')
@@ -70,6 +70,7 @@ def land():
 
 def main():
     arm_and_takeoff(TARGET_ALTITUDE)
+    time.sleep(15)
     land()
 
 
