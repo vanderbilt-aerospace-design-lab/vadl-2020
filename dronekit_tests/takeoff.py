@@ -1,11 +1,28 @@
 from dronekit import connect, VehicleMode
 import time
+import dronekit_sitl
+import argparse
 
 ''' Test script for auto takeoff and landing'''
 
 TARGET_ALTITUDE = 1 # Meters
-CONNECTION_STRING = "/dev/ttyAMA0"
-# Connect to the Vehicle (in this case a simulator running the same computer)
+
+#Set up option parsing to get connection string
+parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
+parser.add_argument('--sitl',
+                   help="Vehicle connection target string. If specified, SITL will be used.")
+args = parser.parse_args()
+
+sitl = None
+
+#Start SITL if connection string specified
+if args.sitl:
+    sitl = dronekit_sitl.start_default()
+    CONNECTION_STRING = sitl.connection_string()
+else:
+    CONNECTION_STRING = "/dev/ttyAMA0"
+
+# Connect to the Vehicle
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
 vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600)
 

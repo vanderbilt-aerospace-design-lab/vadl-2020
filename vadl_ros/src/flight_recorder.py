@@ -14,28 +14,27 @@ from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import numpy as np
 from dronekit import connect
-import dronekit_sitl
+#import dronekit_sitl
 import time
 import argparse
+import os
 
 # Global parameters
 CAMERA_DATA_DIR = './flight_videos'
-CAMERA_VIDEO_FILE = CAMERA_DATA_DIR + '/flight_0.avi'
 
-# Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Print out vehicle state information. Connects to SITL on local PC by default.')
-parser.add_argument('--connect',
-                   help="vehicle connection target string. If not specified, SITL automatically started and used.")
-args = parser.parse_args()
+# Find next video file name
+ct = 0
+for dirpath, dirnames, filenames in os.walk(CAMERA_DATA_DIR):
+    for file in filenames:
+        ct += 1
 
-# connection_string = None
-# sitl = None
-
+CAMERA_VIDEO_FILE = CAMERA_DATA_DIR + '/flight_{}.avi'.format(ct)
+print(CAMERA_VIDEO_FILE)
 
 class FlightRecorder:
 
     def __init__(self):
-        self.connection_string = None
+        self.connection_string = "/dev/ttyAMA0"
 
         # Publishers
         self.image_pub = rospy.Publisher("image_raw", Image, queue_size=0)
@@ -47,19 +46,19 @@ class FlightRecorder:
 
         # Establish connection to Pixhawk
         # Start SITL if no connection string specified
-        if not self.connection_string:
-            self.sitl = dronekit_sitl.start_default()
-            self.connection_string = self.sitl.connection_string()
+     #   if not self.connection_string:
+     #        self.sitl = dronekit_sitl.start_default()
+     #        self.connection_string = self.sitl.connection_string()
 
         # Connect to the Vehicle.
         # Set `wait_ready=True` to ensure default attributes are populated before `connect()` returns.
         print("\nConnecting to vehicle on: %s" % self.connection_string)
-        self.vehicle = connect(self.connection_string, wait_ready=True)
+        self.vehicle = connect(self.connection_string, wait_ready=True, baud=921600)
 
         # Wait for the vehicle to be armed
-        # while not self.vehicle.armed:
-        #     print("Waiting for armed")
-        #     time.sleep(1)
+        while not self.vehicle.armed:
+            print("Waiting for armed")
+            time.sleep(1)
 
         # Wait for GPS to set home location
         while not self.vehicle.home_location:
@@ -71,14 +70,8 @@ class FlightRecorder:
 
         # Set up OpenCV video capture
         self.cap = cv2.VideoCapture(0)
-        # print("Codec: {}".format(self.cap.get(6)))
-        # self.cap.set(6, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
         self.fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.out = cv2.VideoWriter("flight.avi", self.fourcc, 15.0, (640, 480))
-        # print("OpenCV video established")
-        # print("Frame rate: {}".format(self.cap.get(5)))
-        # print("Pixels: {}, {}".format(self.cap.get(3), self.cap.get(4)))
-        # print("Codec: {}".format(self.cap.get(6)))
+        self.out = cv2.VideoWriter(CAMERA_VIDEO_FILE, self.fourcc, 15.0, (640, 480))
 
         # Start taking data
         self.record()
@@ -86,8 +79,9 @@ class FlightRecorder:
 
     def record(self):
         print("Recording data...")
+
         # while self.vehicle.armed:
-        while not rospy.is_shutdown():
+        while not rospy.is_shutdown() and self.vehicle.armed:
 
             # Capture image
             ret, cv_image = self.cap.read()
@@ -103,11 +97,11 @@ class FlightRecorder:
                 # Retrieve global GPS coordinates w/ relative altitude from vehicle
                 # Subtract the home location to obtain full relative coordinates
                 gps_pose = PointStamped()
-
-                # Header
+                #
+                # # Header
                 gps_pose.header.stamp = rospy.Time.now()
-
-                # Data
+                #
+                # # Data
                 location_gps = self.vehicle.location.global_relative_frame
                 gps_pose.point.x = location_gps.lat - self.vehicle.home_location.lat
                 gps_pose.point.y = location_gps.lon - self.vehicle.home_location.lon
