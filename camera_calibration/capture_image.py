@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import time
-IMAGE_DIR = "./calibration_images_fisheye"
+IMAGE_DIR = "./calibration_images_arducam"
 
 # Read images from camera
 cap = cv2.VideoCapture(1)

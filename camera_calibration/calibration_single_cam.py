@@ -26,10 +26,10 @@ import numpy as np
 # PARAMETERS FOR OUR SETUP - MAKE SURE THESE ARE CORRECT
 CB_COLS = 9
 CB_ROWS = 7
-CB_SQUARE_SIZE = 19.6
+CB_SQUARE_SIZE = 20 # mm
 IMG_SIZE = (480, 640)
-OPEN_PATH = "./calibration_images_fisheye/"
-SAVE_PATH = "./calibration_data/fisheye.yaml"
+OPEN_PATH = "./calibration_images_arducam/"
+SAVE_PATH = "./calibration_data/arducam.yaml"
 
 # termination criteria for finding sub-pixel corner positions
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
