@@ -27,9 +27,9 @@ import numpy as np
 CB_COLS = 9
 CB_ROWS = 7
 CB_SQUARE_SIZE = 20 # mm
-IMG_SIZE = (480, 640)
+IMG_SIZE = (1920,1080)
 OPEN_PATH = "./calibration_images_arducam/"
-SAVE_PATH = "./calibration_data/arducam.yaml"
+SAVE_PATH = "./calibration_data/arducam_2.yaml"
 
 # termination criteria for finding sub-pixel corner positions
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
