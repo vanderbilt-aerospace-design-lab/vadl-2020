@@ -5,7 +5,7 @@ from utils import cv_utils
 # Files
 IMAGE_FILE = 'marker_test.jpg'
 VIDEO_FILE_SAVE = 'videos/marker_detection_0.mp4'
-VIDEO_FILE_STREAM = "../flight_videos/flight_4.mp4"
+VIDEO_FILE_STREAM = "../flight_videos/flight_0.mp4"
 # VIDEO_FILE_STREAM = 0
 
 CALIBRATION_FILE = "../camera_calibration/calibration_data/arducam.yaml"
@@ -89,15 +89,6 @@ class MarkerDetector:
             return True if 0.85 <= ar <= 1.15 else False
         return False
 
-    def check_area(self, area, peri):
-        side = peri / 4
-
-        range = 1 # Mess around with this number
-        lower_bound = self.marker_area - range
-        upper_bound = self.marker_area + range
-
-        return lower_bound <= area <= upper_bound
-
     def get_marker_location(self):
         return self.err_x, self.err_y
 
@@ -111,10 +102,13 @@ class MarkerDetector:
         self.undistort_img = cv2.undistort(self.img, self.camera_mat, self.dist_coeffs)
 
         # TODO: Choose between LAB and HSV color space
-        self.lab_space_img = cv2.cvtColor(self.undistort_img, cv2.COLOR_BGR2Lab)
+        self.lab_space_img = cv2.cvtColor(self.undistort_img, cv2.COLOR_BGR2HSV)
+
+        # Blur the image to reduce noise
+        self.lab_space_img = cv2.GaussianBlur(self.lab_space_img, (5,5), 0)
 
         # Threshold image based on yellow; otsu thresholding
-        retval1, thresh1 = cv2.threshold(self.lab_space_img[:, :, 2], 0, 255, cv2.THRESH_OTSU)
+        retval1, thresh1 = cv2.threshold(self.lab_space_img[:, :, 2], -50, 255, cv2.THRESH_OTSU)
 
         # TODO: Is this necessary?
         # Binary OR Otsu thresholding
@@ -143,7 +137,7 @@ class MarkerDetector:
 
             # Approximate the contour
             peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.03 * peri, True)
+            approx = cv2.approxPolyDP(c, 0.015 * peri, True)
             # Keep going if the contour is a square
             if self.is_square(approx):
                 c = approx
