@@ -5,29 +5,30 @@ from utils import cv_utils
 # Files
 IMAGE_FILE = 'marker_test.jpg'
 VIDEO_FILE_SAVE = 'videos/marker_detection_0.mp4'
-VIDEO_FILE_STREAM = "../flight_videos/flight_0.mp4"
+VIDEO_FILE_STREAM = "../flight_videos/flight_100ft.mp4"
 # VIDEO_FILE_STREAM = 0
 
 CALIBRATION_FILE = "../camera_calibration/calibration_data/arducam.yaml"
 
+ALT_THRESH = 25
+
 class MarkerDetector:
-    def __init__(self):
+    def __init__(self, debug=0):
         self.err_x = 0
         self.err_y = 0
-        self.marker_length = 17 # Inches
+        self.marker_length = 17 * 0.0254 # Meters
         self.marker_area = self.marker_length * self.marker_length
         self.resolution = (1920, 1080)
         self.frame_rate = 30.0
         self.marker_found = False
         self.img = None
-        self.undistort_image = None
+        self.undistort_img = None
         self.lab_space_img = None
         self.sum_thresh = None
         self.detected_img = None
         self.camera_mat, self.dist_coeffs = cv_utils.load_yaml(CALIBRATION_FILE)
         self.focal_length = self.camera_mat[1][1]
-        self.debug = 1
-
+        self.debug = debug
 
     def debug_images(self):
         if self.debug:
@@ -44,10 +45,7 @@ class MarkerDetector:
             all_imgs = np.concatenate((row1, row2), axis=0)
 
             cv2.imshow("Original, Undistorted, Lab, Thresholded", all_imgs)
-            if self.detected_img is not None:
-                cv2.imshow('Detected Image', self.detected_img)
-            else:
-                cv2.imshow('Detected Image', self.img)
+            cv2.imshow('Detected Image', self.detected_img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
 
@@ -86,7 +84,7 @@ class MarkerDetector:
 
             # a square will have an aspect ratio that is approximately
             # equal to one, otherwise, the shape is a rectangle
-            return True if 0.85 <= ar <= 1.15 else False
+            return True if 0.75 <= ar <= 1.25 else False
         return False
 
     def get_marker_location(self):
@@ -95,34 +93,76 @@ class MarkerDetector:
     def get_detected_image(self):
         return self.detected_img
 
-    def find_marker(self, img):
+    def find_marker(self, img, alt=25):
         self.img = img
 
-        # Undistort image
+        # Undistort image to get rid of fisheye distortion
         self.undistort_img = cv2.undistort(self.img, self.camera_mat, self.dist_coeffs)
 
-        # TODO: Choose between LAB and HSV color space
-        self.lab_space_img = cv2.cvtColor(self.undistort_img, cv2.COLOR_BGR2HSV)
+        # Convert to LAB color space
+        # LAB color space is used to separate lightness from color attributes
+        # L is dark (0) to light (255)
+        # A is Green (0) to Red (255)
+        # B is Blue (0) to Yellow (255)
+        self.lab_space_img = cv2.cvtColor(self.undistort_img, cv2.COLOR_BGR2Lab)
 
         # Blur the image to reduce noise
         self.lab_space_img = cv2.GaussianBlur(self.lab_space_img, (5,5), 0)
 
-        # Threshold image based on yellow; otsu thresholding
-        retval1, thresh1 = cv2.threshold(self.lab_space_img[:, :, 2], -50, 255, cv2.THRESH_OTSU)
+        # Lightness is thresholded since the yellow tarp will most likely be the lightest object in the image.
+        # At lower altitudes, the marker takes up the majority of the image, and OTSU normalization is ideal, since
+        # it dynamically chooses the threshold value to segment between "light" and "not light". At higher altitudes,
+        # the marker is too small for OTSU to threshold well, so a binary threshold is used.
+        if alt < ALT_THRESH:
+            # Dynamically threshold lightness
+            retval2, thresh_light = cv2.threshold(self.lab_space_img[:, :, 0], 200, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+            cv2.imshow("Thresh_lightness", thresh_light)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+        else:
+            # Binary threshold lightness
+            retval2, thresh_light = cv2.threshold(self.lab_space_img[:, :, 0], 200, 255, cv2.THRESH_BINARY)
+            cv2.imshow("Thresh_lightness", thresh_light)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
 
-        # TODO: Is this necessary?
-        # Binary OR Otsu thresholding
-        retval2, thresh2 = cv2.threshold(self.lab_space_img[:, :, 0], 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        self.sum_thresh = cv2.bitwise_and(thresh1, thresh2)
+        # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
+        retval1, thresh_yellow = cv2.threshold(self.lab_space_img[:, :, 2], 127, 255, cv2.THRESH_BINARY)
+        cv2.imshow("Thresh_yellow", thresh_yellow)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
 
-        # TODO: Is this necessary?
-        # TODO: Try adding a Guassian blur
-        # Dilate and erode the image
-        # This reduces the noise residual in the threshold
-        se1 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(20, 20))
-        se2 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(7, 7))
-        self.sum_thresh = cv2.dilate(self.sum_thresh, se2)
-        self.sum_thresh = cv2.erode(self.sum_thresh, se1)
+        # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
+        self.sum_thresh = cv2.bitwise_and(thresh_yellow, thresh_light)
+        cv2.imshow("sum_thresh", self.sum_thresh)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
+
+        # self.sum_thresh = cv2.dilate(self.sum_thresh, se2)
+        # cv2.imshow("dilate", self.sum_thresh)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     cv2.destroyAllWindows()
+        #
+        # self.sum_thresh = cv2.erode(self.sum_thresh, se1)
+        # cv2.imshow("dilate and erode", self.sum_thresh)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     cv2.destroyAllWindows()
+
+        # Create kernels for dilution and erosion operations; larger ksize means larger pixel neighborhood where the
+        # operation is taking place
+        se1 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(8, 8))
+        se2 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(50, 50))
+
+        # Perform "opening." This is erosion followed by dilation, which reduces noise. The ksize is pretty small,
+        # otherwise the white in the marker is eliminated
+        self.sum_thresh = cv2.morphologyEx(self.sum_thresh, cv2.MORPH_OPEN, se1)
+
+        # Perform "closing." This is dilution followed by erosion, which fills in black gaps within the marker. This is
+        # necessary if the lightness threshold is not able to get the entire marker at lower altitudes
+        self.sum_thresh = cv2.morphologyEx(self.sum_thresh, cv2.MORPH_CLOSE, se2)
+        cv2.imshow("Closing", self.sum_thresh)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.destroyAllWindows()
 
         # Find contours
         # TODO: The return values here are dependent on Opencv 2,3,or 4, so either be sure of which version
@@ -132,16 +172,15 @@ class MarkerDetector:
         # Find corners of the contour
         if len(contours) >= 1:
 
-            # Take contour w/ max area
+            # Take contour w/ max area; the marker will always be the largest contour in the image
             c = max(contours, key=cv2.contourArea)
 
             # Approximate the contour
             peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.015 * peri, True)
+            approx = cv2.approxPolyDP(c, 0.03 * peri, True)
             # Keep going if the contour is a square
             if self.is_square(approx):
                 c = approx
-                peri = cv2.arcLength(c, True)
 
                 # Find extreme points
                 extLeft = tuple(c[c[:, :, 0].argmin()][0])
@@ -155,12 +194,14 @@ class MarkerDetector:
                 cY = int(M["m01"] / M["m00"])
 
                 # Find the distance to the platform
+                # TODO: This will most likely be replaced with depth from the Realsense camera
                 pixel_length = peri / 4
                 depth = (self.focal_length / pixel_length) * self.marker_length
+
+                # Determine the *approximate* scale factor
                 scale_factor = self.marker_length / pixel_length
 
-                # Find positional error from center of platform
-                # Pixels
+                # Find positional error from center of platform; Pixels
                 self.err_x = cX - (self.resolution[0] / 2)
                 self.err_y = (self.resolution[1] / 2) - cY
 
@@ -172,113 +213,13 @@ class MarkerDetector:
                                                                cX, cY, depth, c)
                 self.debug_images()
                 return True
-        self.detected_img = None
+
+        self.detected_img = self.img.copy()
         self.debug_images()
         return False
 
-    # # Record video and track the marker position.
-    # def track_marker(self):
-    #
-    #     # Load calibration parameters
-    #     camera_mat, dist_coeffs = cv_utils.load_yaml(CALIBRATION_FILE)
-    #
-    #     # Set up video capture
-    #     cap = cv2.VideoCapture(VIDEO_FILE_STREAM)
-    #     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    #     out = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, FRAME_RATE, RESOLUTION)
-    #
-    #     while True:
-    #         ret, img = cap.read()
-    #         # img = cv2.imread("marker_test.jpg")
-    #
-    #         # Undistort image
-    #         undistort_img = cv2.undistort(img, camera_mat, dist_coeffs)
-    #
-    #         # TODO: Choose between LAB and HSV color space
-    #         lab_space_img = cv2.cvtColor(undistort_img, cv2.COLOR_BGR2Lab)
-    #
-    #         # Threshold image based on yellow; otsu thresholding
-    #         retval1, thresh1 = cv2.threshold(lab_space_img[:, :, 2], 0, 255, cv2.THRESH_OTSU)
-    #
-    #         # TODO: Is this necessary?
-    #         # Binary OR Otsu thresholding
-    #         retval2, thresh2 = cv2.threshold(lab_space_img[:, :, 0], 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    #         sum_thresh = cv2.bitwise_and(thresh1, thresh2)
-    #
-    #         # TODO: Is this necessary?
-    #         # TODO: Try adding a Guassian blur
-    #         # Dilate and erode the image
-    #         # This reduces the noise residual in the threshold
-    #         se1 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(20,20))
-    #         se2 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(7, 7))
-    #         sum_thresh = cv2.dilate(sum_thresh, se2)
-    #         sum_thresh = cv2.erode(sum_thresh, se1)
-    #
-    #         # Find contours
-    #         # TODO: The return values here are dependent on Opencv 2,3,or 4, so either be sure of which version
-    #         #  we are using or add some code to check the version
-    #         _, contours, hierarchy = cv2.findContours(sum_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    #
-    #         # Find corners of the contour
-    #         if len(contours) >= 1:
-    #             final_contour = None
-    #             # Take contour w/ max area
-    #             c = max(contours, key=cv2.contourArea)
-    #
-    #             # Approximate the contour
-    #             peri = cv2.arcLength(c, True)
-    #             approx = cv2.approxPolyDP(c, 0.03 * peri, True)
-    #
-    #             if len(approx) == 4:
-    #                 c = approx
-    #                 peri = cv2.arcLength(c, True)
-    #
-    #             # Find extreme points
-    #             extLeft = tuple(c[c[:, :, 0].argmin()][0])
-    #             extRight = tuple(c[c[:, :, 0].argmax()][0])
-    #             extTop = tuple(c[c[:, :, 1].argmin()][0])
-    #             extBot = tuple(c[c[:, :, 1].argmax()][0])
-    #
-    #             # Find the contour center
-    #             M = cv2.moments(c)
-    #             cX = int(M["m10"] / M["m00"])
-    #             cY = int(M["m01"] / M["m00"])
-    #
-    #             # Find the distance to the platform
-    #             pixel_length = peri / 4
-    #             focal_length = camera_mat[1][1]  # Taken from the calibration file
-    #             depth = (focal_length / pixel_length) * MARKER_LENGTH
-    #             scale_factor = MARKER_LENGTH / pixel_length
-    #
-    #             # Find positional error from center of platform
-    #             # Pixels
-    #             err_x = cX - (RESOLUTION[0]/2)
-    #             err_y = (RESOLUTION[1]/2) - cY
-    #
-    #             # Convert to inches
-    #             err_x *= scale_factor
-    #             err_y *= scale_factor
-    #
-    #             detected_img = visualize_marker_pose(img, extLeft, extRight, extTop, extBot,
-    #                                                  cX, cY, depth, err_x, err_y, c)
-    #
-    #             # Write to video
-    #             out.write(detected_img)
-    #
-    #             # Display all steps for troubleshooting
-    #             if DEBUG:
-    #                 images = [img, undistort_img, lab_space_img, sum_thresh, detected_img]
-    #                 debug_images(images)
-    #             else :
-    #                 # Just show final image
-    #                 cv2.imshow('img', detected_img)
-    #                 if cv2.waitKey(1) & 0xFF == ord('q'):
-    #                     break
-    #
-    #     out.release()
-
 def main():
-    marker_detector = MarkerDetector()
+    marker_detector = MarkerDetector(1)
 
     # Set up video capture
     cap = cv2.VideoCapture(VIDEO_FILE_STREAM)
