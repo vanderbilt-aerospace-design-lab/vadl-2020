@@ -4,7 +4,6 @@
     hover over the marker. Manual override always available. '''
 
 from dronekit import VehicleMode
-import dronekit_sitl
 import cv2
 import argparse
 import time
@@ -16,15 +15,15 @@ from marker_detection import MarkerDetector
 from aruco_tracker import ArucoTracker
 
 RPI = 0
+DEBUG = 0
+SILENT_DEBUG = 1
+
 TARGET_ALTITUDE = 2 # Meters
 
 # Files
 VIDEO_FILE_SAVE = 'videos/marker_hover_1.mp4'
 POSE_FILE = "pose_data/marker_pose_0.txt"
 PID_FILE = "pid_data/pid_0.txt"
-
-# Displays each step of the marker detection process, saves final images and positions to output
-DEBUG = 1
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
@@ -42,6 +41,7 @@ else:
 def connect_vehicle():
     #Start SITL if connection string specified
     if args.sitl:
+        import dronekit_sitl
         sitl = dronekit_sitl.start_default()
         CONNECTION_STRING = sitl.connection_string()
     else:
@@ -68,7 +68,7 @@ def marker_hover(vehicle):
     if DEBUG:
 
         # Create video
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         out = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, marker_detector.resolution)
 
         # Open text file to store UAV position
@@ -121,7 +121,7 @@ def marker_hover(vehicle):
 
 
 def marker_hover_rpi(vehicle):
-    out = None
+    writer = None
     pose_file = None
     pid_file = None
 
@@ -137,16 +137,15 @@ def marker_hover_rpi(vehicle):
 
     # Initialize the camera and grab a reference to the raw camera capture
     camera = PiCamera()
-    camera.resolution = RESOLUTION
-    raw_capture = PiRGBArray(camera, size=RESOLUTION)
+    camera.resolution = marker_detector.resolution
+    raw_capture = PiRGBArray(camera, size=marker_detector.resolution)
 
     # Allow the camera to warm up
     time.sleep(0.1)
 
-    if DEBUG:
+    if DEBUG or SILENT_DEBUG:
         # Create video
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, marker_detector.resolution)
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
         # Open text file to store UAV position
         pose_file = open("pose_data/marker_pose.txt", "w")
@@ -184,8 +183,12 @@ def marker_hover_rpi(vehicle):
             dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=command_forward, right=command_right,
                                                                 down=0)
 
-            if DEBUG:
-                out.write(marker_detector.get_detected_image())
+            if writer is None:
+                (h, w) = frame.shape[:2]
+                writer = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, (w, h), True)
+
+            if DEBUG or SILENT_DEBUG:
+                writer.write(marker_detector.get_detected_image())
                 pose_file.write("{} {}\n".format(marker_pose_body_ref[0], marker_pose_body_ref[1]))
                 pid_file.write("{} {}\n".format(command_forward, command_right))
 
@@ -193,13 +196,13 @@ def marker_hover_rpi(vehicle):
             if vehicle.mode is not "GUIDED":
                 break
         else:
-            if DEBUG:
-                out.write(marker_detector.get_detected_image())
+            if DEBUG or SILENT_DEBUG:
+                writer.write(marker_detector.get_detected_image())
                 pose_file.write("{} {}\n".format("N/A", "N/A"))
                 pid_file.write("{} {}\n".format("N/A", "N/A"))
 
     # When everything done, release the capture
-    out.release()
+    writer.release()
 
 def main():
 
