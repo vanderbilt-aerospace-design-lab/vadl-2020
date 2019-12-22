@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from utils import cv_utils
+import matplotlib.pyplot as plt
 
 # Files
 IMAGE_FILE = 'marker_test.jpg'
@@ -14,38 +15,73 @@ ALT_THRESH = 25
 
 class MarkerDetector:
     def __init__(self, debug=0):
-        self.err_x = 0
-        self.err_y = 0
         self.marker_length = 17 * 0.0254 # Meters
         self.marker_area = self.marker_length * self.marker_length
         self.resolution = (1920, 1080)
         self.frame_rate = 30.0
-        self.marker_found = False
+        self.camera_mat, self.dist_coeffs = cv_utils.load_yaml(CALIBRATION_FILE)
+        self.focal_length = self.camera_mat[1][1]
         self.img = None
         self.undistort_img = None
         self.lab_space_img = None
-        self.sum_thresh = None
+        self.thresh_yellow = None
+        self.thresh_light = None
+        self.thresh_sum = None
+        self.opening = None
+        self.processed_img = None
         self.detected_img = None
-        self.camera_mat, self.dist_coeffs = cv_utils.load_yaml(CALIBRATION_FILE)
-        self.focal_length = self.camera_mat[1][1]
+        self.marker_found = False
+        self.err_x = 0
+        self.err_y = 0
         self.debug = debug
 
     def debug_images(self):
         if self.debug:
+
+            # Reduced dimsensions so all images fit on the screen
             reduced_dim = (self.resolution[0] / 4, self.resolution[1] / 4)
-            three_thresh = cv2.merge((self.sum_thresh,self.sum_thresh,self.sum_thresh))
+
+            # Make masks three-channel images
+            thresh_yellow_three = cv2.merge((self.thresh_yellow,self.thresh_yellow,self.thresh_yellow))
+            thresh_light_three = cv2.merge((self.thresh_light,self.thresh_light,self.thresh_light))
+            thresh_sum_three = cv2.merge((self.thresh_sum,self.thresh_sum,self.thresh_sum))
+            opening_three = cv2.merge((self.opening,self.opening,self.opening))
+            processed_three = cv2.merge((self.processed_img,self.processed_img,self.processed_img))
+
 
             # Resize
             img1 = cv2.resize(self.img, reduced_dim, interpolation=cv2.INTER_AREA)
             img2 = cv2.resize(self.undistort_img, reduced_dim, interpolation=cv2.INTER_AREA)
             img3 = cv2.resize(self.lab_space_img, reduced_dim, interpolation=cv2.INTER_AREA)
-            img4 = cv2.resize(three_thresh, reduced_dim, interpolation=cv2.INTER_AREA)
-            row1 = np.concatenate((img1, img2), axis=1)
-            row2 = np.concatenate((img3, img4), axis=1)
-            all_imgs = np.concatenate((row1, row2), axis=0)
+            img4 = cv2.resize(thresh_yellow_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img5 = cv2.resize(thresh_light_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img6 = cv2.resize(thresh_sum_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img7 = cv2.resize(opening_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img8 = cv2.resize(processed_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img9 = cv2.resize(self.detected_img, reduced_dim, interpolation=cv2.INTER_AREA)
 
-            cv2.imshow("Original, Undistorted, Lab, Thresholded", all_imgs)
-            cv2.imshow('Detected Image', self.detected_img)
+            # img1 = self.img
+            # img2 = self.undistort_img
+            # img3 = self.lab_space_img
+            # img4 = thresh_yellow_three
+            # img5 = thresh_light_three
+            # img6 = thresh_sum_three
+            # img7 = opening_three
+            # img8 = processed_three
+            # img9 = self.detected_img
+
+            row1 = np.concatenate((img1, img2, img3), axis=1)
+            row2 = np.concatenate((img4, img5, img6), axis=1)
+            row3 = np.concatenate((img7, img8, img9), axis=1)
+            all_imgs = np.concatenate((row1, row2, row3), axis=0)
+
+            cv2.namedWindow("Original, Undistorted, Lab // "
+                       "Yellow Thresh, Light Thresh, Sum Thresh // "
+                       "Opening, Closing, Final", cv2.WINDOW_FULLSCREEN)
+
+            cv2.imshow("Original, Undistorted, Lab // "
+                       "Yellow Thresh, Light Thresh, Sum Thresh // "
+                       "Opening, Closing, Final", all_imgs)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
 
@@ -115,36 +151,25 @@ class MarkerDetector:
         # the marker is too small for OTSU to threshold well, so a binary threshold is used.
         if alt < ALT_THRESH:
             # Dynamically threshold lightness
-            retval2, thresh_light = cv2.threshold(self.lab_space_img[:, :, 0], 200, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-            cv2.imshow("Thresh_lightness", thresh_light)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
+            retval2, self.thresh_light = cv2.threshold(self.lab_space_img[:, :, 0], 200, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+
         else:
             # Binary threshold lightness
-            retval2, thresh_light = cv2.threshold(self.lab_space_img[:, :, 0], 200, 255, cv2.THRESH_BINARY)
-            cv2.imshow("Thresh_lightness", thresh_light)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
+            retval2, self.thresh_light = cv2.threshold(self.lab_space_img[:, :, 0], 200, 255, cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
-        retval1, thresh_yellow = cv2.threshold(self.lab_space_img[:, :, 2], 127, 255, cv2.THRESH_BINARY)
-        cv2.imshow("Thresh_yellow", thresh_yellow)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
+        retval1, self.thresh_yellow = cv2.threshold(self.lab_space_img[:, :, 2], 127, 255, cv2.THRESH_BINARY)
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
-        self.sum_thresh = cv2.bitwise_and(thresh_yellow, thresh_light)
-        cv2.imshow("sum_thresh", self.sum_thresh)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
+        self.thresh_sum = cv2.bitwise_and(self.thresh_yellow, self.thresh_light)
 
-        # self.sum_thresh = cv2.dilate(self.sum_thresh, se2)
-        # cv2.imshow("dilate", self.sum_thresh)
+        # self.thresh_sum = cv2.dilate(self.thresh_sum, se2)
+        # cv2.imshow("dilate", self.thresh_sum)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         #     cv2.destroyAllWindows()
         #
-        # self.sum_thresh = cv2.erode(self.sum_thresh, se1)
-        # cv2.imshow("dilate and erode", self.sum_thresh)
+        # self.thresh_sum = cv2.erode(self.thresh_sum, se1)
+        # cv2.imshow("dilate and erode", self.thresh_sum)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         #     cv2.destroyAllWindows()
 
@@ -155,19 +180,16 @@ class MarkerDetector:
 
         # Perform "opening." This is erosion followed by dilation, which reduces noise. The ksize is pretty small,
         # otherwise the white in the marker is eliminated
-        self.sum_thresh = cv2.morphologyEx(self.sum_thresh, cv2.MORPH_OPEN, se1)
+        self.opening = cv2.morphologyEx(self.thresh_sum, cv2.MORPH_OPEN, se1)
 
         # Perform "closing." This is dilution followed by erosion, which fills in black gaps within the marker. This is
         # necessary if the lightness threshold is not able to get the entire marker at lower altitudes
-        self.sum_thresh = cv2.morphologyEx(self.sum_thresh, cv2.MORPH_CLOSE, se2)
-        cv2.imshow("Closing", self.sum_thresh)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
+        self.processed_img = cv2.morphologyEx(self.opening, cv2.MORPH_CLOSE, se2)
 
         # Find contours
         # TODO: The return values here are dependent on Opencv 2,3,or 4, so either be sure of which version
         #  we are using or add some code to check the version
-        _, contours, hierarchy = cv2.findContours(self.sum_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        _, contours, hierarchy = cv2.findContours(self.processed_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
         # Find corners of the contour
         if len(contours) >= 1:
@@ -205,7 +227,7 @@ class MarkerDetector:
                 self.err_x = cX - (self.resolution[0] / 2)
                 self.err_y = (self.resolution[1] / 2) - cY
 
-                # Convert to inches
+                # Convert to meters
                 self.err_x *= scale_factor
                 self.err_y *= scale_factor
 
