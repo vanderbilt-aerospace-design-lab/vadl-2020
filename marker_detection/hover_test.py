@@ -20,24 +20,26 @@ TARGET_ALTITUDE = 2 # Meters
 
 # Files
 VIDEO_FILE_SAVE = 'videos/marker_hover_1.mp4'
-VIDEO_FILE_STREAM = "../flight_videos/flight_4.mp4"
-# VIDEO_FILE_STREAM = 0
 POSE_FILE = "pose_data/marker_pose_0.txt"
 PID_FILE = "pid_data/pid_0.txt"
 
 # Displays each step of the marker detection process, saves final images and positions to output
 DEBUG = 1
 
+#Set up option parsing to get connection string
+parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
+parser.add_argument('--sitl',
+                   help="Vehicle connection target string. If specified, SITL will be used.")
+parser.add_argument('-v',
+                   help="Play video instead of live stream.")
+args = parser.parse_args()
+
+if args.v is not None:
+    VIDEO_FILE_STREAM = args.v
+else:
+    VIDEO_FILE_STREAM = 0
+
 def connect_vehicle():
-
-    #Set up option parsing to get connection string
-    parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
-    parser.add_argument('--sitl',
-                       help="Vehicle connection target string. If specified, SITL will be used.")
-    args = parser.parse_args()
-
-    sitl = None
-
     #Start SITL if connection string specified
     if args.sitl:
         sitl = dronekit_sitl.start_default()
