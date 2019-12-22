@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # Files
 IMAGE_FILE = 'marker_test.jpg'
 VIDEO_FILE_SAVE = 'videos/marker_detection_0.mp4'
-VIDEO_FILE_STREAM = "../flight_videos/flight_100ft.mp4"
+VIDEO_FILE_STREAM = "../flight_videos/flight_200ft.mp4"
 # VIDEO_FILE_STREAM = 0
 
 CALIBRATION_FILE = "../camera_calibration/calibration_data/arducam.yaml"
@@ -60,21 +60,13 @@ class MarkerDetector:
             img8 = cv2.resize(processed_three, reduced_dim, interpolation=cv2.INTER_AREA)
             img9 = cv2.resize(self.detected_img, reduced_dim, interpolation=cv2.INTER_AREA)
 
-            # img1 = self.img
-            # img2 = self.undistort_img
-            # img3 = self.lab_space_img
-            # img4 = thresh_yellow_three
-            # img5 = thresh_light_three
-            # img6 = thresh_sum_three
-            # img7 = opening_three
-            # img8 = processed_three
-            # img9 = self.detected_img
-
+            # Merge into one image
             row1 = np.concatenate((img1, img2, img3), axis=1)
             row2 = np.concatenate((img4, img5, img6), axis=1)
             row3 = np.concatenate((img7, img8, img9), axis=1)
             all_imgs = np.concatenate((row1, row2, row3), axis=0)
 
+            # Display
             cv2.namedWindow("Original, Undistorted, Lab // "
                        "Yellow Thresh, Light Thresh, Sum Thresh // "
                        "Opening, Closing, Final", cv2.WINDOW_FULLSCREEN)
@@ -162,16 +154,6 @@ class MarkerDetector:
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
         self.thresh_sum = cv2.bitwise_and(self.thresh_yellow, self.thresh_light)
-
-        # self.thresh_sum = cv2.dilate(self.thresh_sum, se2)
-        # cv2.imshow("dilate", self.thresh_sum)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     cv2.destroyAllWindows()
-        #
-        # self.thresh_sum = cv2.erode(self.thresh_sum, se1)
-        # cv2.imshow("dilate and erode", self.thresh_sum)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     cv2.destroyAllWindows()
 
         # Create kernels for dilution and erosion operations; larger ksize means larger pixel neighborhood where the
         # operation is taking place
