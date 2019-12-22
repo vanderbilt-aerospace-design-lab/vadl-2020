@@ -1,17 +1,29 @@
 import cv2
 import numpy as np
 from utils import cv_utils
+import time
+import argparse
 
+RPI = 0
+DEBUG = 0
 
 # Files
 IMAGE_FILE = 'marker_test.jpg'
-VIDEO_FILE_SAVE = 'videos/marker_detection_0.mp4'
-VIDEO_FILE_STREAM = "../flight_videos/flight_1.mp4"
-# VIDEO_FILE_STREAM = 0
-
+VIDEO_FILE_SAVE = 'videos/marker_detection_0.avi'
 CALIBRATION_FILE = "../camera_calibration/calibration_data/arducam.yaml"
 
-ALT_THRESH = 25
+ALT_THRESH = 25 # Meters
+
+#Set up option parsing to get connection string
+parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
+parser.add_argument('-v',
+                   help="Play video instead of live stream.")
+args = parser.parse_args()
+
+if args.v is not None:
+    VIDEO_FILE_STREAM = args.v
+else:
+    VIDEO_FILE_STREAM = 0
 
 class MarkerDetector(object):
     def __init__(self, debug=0):
@@ -219,27 +231,58 @@ class MarkerDetector(object):
                 self.marker_found = True
                 return True
 
-        self.detected_img = self.img.copy()
+        self.detected_img = self.img
         self.debug_images()
         self.marker_found = False
         return False
 
 def main():
-    marker_detector = MarkerDetector(1)
+    marker_detector = MarkerDetector(DEBUG)
 
-    # Set up video capture
-    cap = cv2.VideoCapture(VIDEO_FILE_STREAM)
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, marker_detector.resolution)
+    if DEBUG:
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        out = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, marker_detector.resolution)
 
-    while True:
-        ret, img = cap.read()
-        marker_found = marker_detector.track_marker(img)
+    if RPI:
+        # Picamera dependencies
+        from picamera.array import PiRGBArray
+        from picamera import PiCamera
 
-        if marker_found and marker_detector.debug:
-            out.write(marker_detector.get_detected_image())
+        # Initialize the camera and grab a reference to the raw camera capture
+        camera = PiCamera()
+        camera.resolution = marker_detector.resolution
+        raw_capture = PiRGBArray(camera, size=marker_detector.resolution)
 
-    out.release()
+        # Allow the camera to warm up
+        time.sleep(0.1)
+
+        for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+            # grab the raw NumPy array representing the image, then initialize the timestamp
+            # and occupied/unoccupied text
+            img = frame.array
+
+            # Clear the stream in preparation for the next frame
+            raw_capture.truncate(0)
+
+            marker_found = marker_detector.track_marker(img)
+
+            if marker_found and marker_detector.debug:
+                out.write(marker_detector.get_detected_image())
+
+    else:
+        # Set up video capture
+        cap = cv2.VideoCapture(VIDEO_FILE_STREAM)
+
+        while True:
+            ret, img = cap.read()
+            marker_detector.track_marker(img)
+
+            if marker_detector.debug:
+                out.write(marker_detector.get_detected_image())
+
+    if DEBUG:
+        out.release()
+
 
 if __name__ == "__main__":
     main()
