@@ -6,6 +6,7 @@ import argparse
 
 RPI = 0
 DEBUG = 0
+SILENT_DEBUG = 1
 
 # Files
 IMAGE_FILE = 'marker_test.jpg'
@@ -29,8 +30,8 @@ class MarkerDetector(object):
     def __init__(self, debug=0):
         self.marker_length = 17 * 0.0254 # Meters
         self.marker_area = self.marker_length * self.marker_length
-        self.resolution = (1920, 1080)
-        self.frame_rate = 30.0
+        self.resolution = (640, 480)
+        self.frame_rate = 15.0
         self.camera_mat, self.dist_coeffs = cv_utils.load_yaml(CALIBRATION_FILE)
         self.focal_length = self.camera_mat[1][1]
         self.img = None
@@ -90,7 +91,7 @@ class MarkerDetector(object):
                 cv2.destroyAllWindows()
 
     def visualize_marker_pose(self, extLeft, extRight, extTop, extBot, cX, cY, depth, c):
-        if self.debug:
+        if self.debug or SILENT_DEBUG:
             self.detected_img = self.img.copy()
             # Draw extreme points on image
             cv2.circle(self.detected_img, extLeft, 8, (255, 0, 0), -1)
@@ -238,10 +239,10 @@ class MarkerDetector(object):
 
 def main():
     marker_detector = MarkerDetector(DEBUG)
+    writer = None
 
-    if DEBUG:
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, marker_detector.resolution)
+    if DEBUG or SILENT_DEBUG:
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
     if RPI:
         # Picamera dependencies
@@ -266,8 +267,12 @@ def main():
 
             marker_found = marker_detector.track_marker(img)
 
-            if marker_found and marker_detector.debug:
-                out.write(marker_detector.get_detected_image())
+            if writer is None:
+                (h, w) = frame.shape[:2]
+                writer = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, (w, h), True)
+
+            if DEBUG or SILENT_DEBUG:
+                writer.write(marker_detector.get_detected_image())
 
     else:
         # Set up video capture
@@ -277,12 +282,15 @@ def main():
             ret, img = cap.read()
             marker_detector.track_marker(img)
 
-            if marker_detector.debug:
-                out.write(marker_detector.get_detected_image())
+            if writer is None:
+                (h, w) = img.shape[:2]
+                writer = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, (w, h), True)
 
-    if DEBUG:
-        out.release()
+            if DEBUG or SILENT_DEBUG:
+                writer.write(marker_detector.get_detected_image())
 
+    if DEBUG or SILENT_DEBUG:
+        writer.release()
 
 if __name__ == "__main__":
     main()
