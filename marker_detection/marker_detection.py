@@ -4,14 +4,14 @@ from utils import cv_utils
 import time
 import argparse
 
-RPI = 0
+RPI = 1
 DEBUG = 0
 SILENT_DEBUG = 1
 
 # Files
 IMAGE_FILE = 'marker_test.jpg'
-VIDEO_FILE_SAVE = 'videos/marker_detection_0.avi'
-CALIBRATION_FILE = "../camera_calibration/calibration_data/arducam.yaml"
+VIDEO_FILE_SAVE = 'marker_detection/videos/marker_detection_0.avi'
+CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
 
 ALT_THRESH = 25 # Meters
 
@@ -31,7 +31,8 @@ class MarkerDetector(object):
         self.marker_length = 17 * 0.0254 # Meters
         self.marker_area = self.marker_length * self.marker_length
         self.resolution = (640, 480)
-        self.frame_rate = 15.0
+        self.frame_rate = 10.0
+        print("Loading camera calibration parameters")
         self.camera_mat, self.dist_coeffs = cv_utils.load_yaml(CALIBRATION_FILE)
         self.focal_length = self.camera_mat[1][1]
         self.img = None
@@ -256,7 +257,8 @@ def main():
 
         # Allow the camera to warm up
         time.sleep(0.1)
-
+        
+        print("Recording...")
         for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
             # grab the raw NumPy array representing the image, then initialize the timestamp
             # and occupied/unoccupied text
@@ -268,7 +270,7 @@ def main():
             marker_found = marker_detector.track_marker(img)
 
             if writer is None:
-                (h, w) = frame.shape[:2]
+                (h, w) = img.shape[:2]
                 writer = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, (w, h), True)
 
             if DEBUG or SILENT_DEBUG:

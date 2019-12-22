@@ -4,7 +4,7 @@
     hover over the marker. Manual override always available. '''
 
 from dronekit import VehicleMode
-import dronekit_sitl
+#import dronekit_sitl
 import cv2
 import argparse
 import time
