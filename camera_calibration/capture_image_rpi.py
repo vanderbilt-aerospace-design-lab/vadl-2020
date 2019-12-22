@@ -3,7 +3,7 @@ from picamera.array import PiRGBArray
 from picamera import PiCamera
 import cv2
 import time
-IMAGE_DIR = "./calibration_images_arducam"
+IMAGE_DIR = "."
 
 
 time.sleep(5)
@@ -33,7 +33,7 @@ for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port
         break
     
     # Save an image every X time interval
-    cv2.imwrite(IMAGE_DIR + '/calib_image_{}.jpg'.format(ct), img)
+    cv2.imwrite(IMAGE_DIR + '/marker_test_{}.jpg'.format(ct), img)
     print("Saved image {}".format(ct))
     ct += 1
     time.sleep(1)
