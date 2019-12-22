@@ -1,19 +1,19 @@
 import cv2
 import numpy as np
 from utils import cv_utils
-import matplotlib.pyplot as plt
+
 
 # Files
 IMAGE_FILE = 'marker_test.jpg'
 VIDEO_FILE_SAVE = 'videos/marker_detection_0.mp4'
-VIDEO_FILE_STREAM = "../flight_videos/flight_200ft.mp4"
+VIDEO_FILE_STREAM = "../flight_videos/flight_1.mp4"
 # VIDEO_FILE_STREAM = 0
 
 CALIBRATION_FILE = "../camera_calibration/calibration_data/arducam.yaml"
 
 ALT_THRESH = 25
 
-class MarkerDetector:
+class MarkerDetector(object):
     def __init__(self, debug=0):
         self.marker_length = 17 * 0.0254 # Meters
         self.marker_area = self.marker_length * self.marker_length
@@ -115,13 +115,13 @@ class MarkerDetector:
             return True if 0.75 <= ar <= 1.25 else False
         return False
 
-    def get_marker_location(self):
+    def get_marker_pose(self):
         return self.err_x, self.err_y
 
     def get_detected_image(self):
         return self.detected_img
 
-    def find_marker(self, img, alt=25):
+    def track_marker(self, img, alt=25):
         self.img = img
 
         # Undistort image to get rid of fisheye distortion
@@ -216,10 +216,12 @@ class MarkerDetector:
                 self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
                                                                cX, cY, depth, c)
                 self.debug_images()
+                self.marker_found = True
                 return True
 
         self.detected_img = self.img.copy()
         self.debug_images()
+        self.marker_found = False
         return False
 
 def main():
@@ -232,11 +234,12 @@ def main():
 
     while True:
         ret, img = cap.read()
-        marker_found = marker_detector.find_marker(img)
+        marker_found = marker_detector.track_marker(img)
 
         if marker_found and marker_detector.debug:
             out.write(marker_detector.get_detected_image())
 
     out.release()
+
 if __name__ == "__main__":
     main()
