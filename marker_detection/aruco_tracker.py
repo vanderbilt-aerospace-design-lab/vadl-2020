@@ -6,10 +6,9 @@ import time
 import argparse
 
 RPI = 0
-DEBUG = 1
+DEBUG = 0
+SILENT_DEBUG = 1
 
-# Files
-IMAGE_FILE = 'marker_test.jpg'
 VIDEO_FILE_SAVE = 'videos/aruco_detection_0.avi'
 
 #Set up option parsing to get connection string
@@ -36,13 +35,15 @@ class ArucoTracker(MarkerDetector):
         self.tvec = None
 
     def debug_images(self):
-        if self.debug:
+        if self.debug or SILENT_DEBUG:
             if self.marker_found:
                 self.detected_img = aruco.drawAxis(self.img, self.camera_mat, self.dist_coeffs, self.rvec, self.tvec, 0.1)
-                cv2.imshow("Aruco Tracker", self.detected_img)
+                if self.debug:
+                    cv2.imshow("Aruco Tracker", self.detected_img)
                 print(self.tvec)
             else:
-                cv2.imshow("Aruco Tracker", self.img)
+                if self.debug:
+                    cv2.imshow("Aruco Tracker", self.img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
 
@@ -90,10 +91,10 @@ class ArucoTracker(MarkerDetector):
 
 def main():
     marker_detector = ArucoTracker(DEBUG)
+    writer = None
 
-    if DEBUG:
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, marker_detector.resolution)
+    if DEBUG or SILENT_DEBUG:
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
     if RPI:
         # Picamera dependencies
@@ -116,10 +117,14 @@ def main():
             # Clear the stream in preparation for the next frame
             raw_capture.truncate(0)
 
-            marker_found = marker_detector.track_marker(img)
+            marker_detector.track_marker(img)
 
-            if marker_detector.debug:
-                out.write(marker_detector.get_detected_image())
+            if writer is None:
+                (h, w) = frame.shape[:2]
+                writer = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, (w, h), True)
+
+            if DEBUG or SILENT_DEBUG:
+                writer.write(marker_detector.get_detected_image())
 
     else:
         # Set up video capture
@@ -129,11 +134,15 @@ def main():
             ret, img = cap.read()
             marker_detector.track_marker(img)
 
-            if marker_detector.debug:
-                out.write(marker_detector.get_detected_image())
+            if writer is None:
+                (h, w) = img.shape[:2]
+                writer = cv2.VideoWriter(VIDEO_FILE_SAVE, fourcc, marker_detector.frame_rate, (w, h), True)
 
-    if DEBUG:
-        out.release()
+            if DEBUG or SILENT_DEBUG:
+                writer.write(marker_detector.get_detected_image())
+
+    if DEBUG or SILENT_DEBUG:
+        writer.release()
 
 
 if __name__ == "__main__":
