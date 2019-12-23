@@ -31,6 +31,7 @@ class MarkerTracker(VideoStreamer):
         self.marker_found = False
         self.cur_frame = None
         self.detected_frame = None # Store visual information about the marker
+        self.scale_factor = None
         self.debug = debug
 
         # Save video
@@ -49,6 +50,12 @@ class MarkerTracker(VideoStreamer):
     def get_debug(self):
         return self.debug
 
+    def get_detected_frame(self):
+        return self.detected_frame
+
+    def get_scale_factor(self):
+        return self.scale_factor
+
     def set_pose(self, pose):
         self.pose = pose
 
@@ -61,6 +68,11 @@ class MarkerTracker(VideoStreamer):
     # Used for debugging or recording purposes. Will display images to your display and save a video.
     @abstractmethod
     def visualize(self):
+        pass
+
+    # Calculate the pixel to meters conversion for marker length
+    @abstractmethod
+    def calculate_scale_factor(self, args):
         pass
 
 # Tracks a yellow marker.
@@ -94,85 +106,7 @@ class ColorMarkerTracker(MarkerTracker):
         self.thresh_sum_frame = None
         self.opening_frame = None
         self.processed_frame = None # Final thresholded frame
-
-    # For debugging and recording. If on the Pi, we only want to save videos, since the GUI may not be available.
-    def visualize(self):
-        if not self.marker_found:
-            self.detected_frame = self.cur_frame
-
-        if self.use_rpi:
-
-            self.video_writer.write(self.detected_frame)
-        else:
-            # Reduce all 9 image dimensions so they can be merged together
-            reduced_dim = (self.resolution[0] / 3, self.resolution[1] / 3)
-
-            # Convert the mask images into three-channel images so they can be merged with the rest
-            thresh_yellow_frame_three = cv2.merge((self.thresh_yellow_frame,self.thresh_yellow_frame,self.thresh_yellow_frame))
-            thresh_light_frame_three = cv2.merge((self.thresh_light_frame,self.thresh_light_frame,self.thresh_light_frame))
-            thresh_sum_frame_three = cv2.merge((self.thresh_sum_frame,self.thresh_sum_frame,self.thresh_sum_frame))
-            opening_frame_three = cv2.merge((self.opening_frame,self.opening_frame,self.opening_frame))
-            processed_three = cv2.merge((self.processed_frame,self.processed_frame,self.processed_frame))
-
-            # Resize
-            img1 = cv2.resize(self.read(), reduced_dim, interpolation=cv2.INTER_AREA)
-            img2 = cv2.resize(self.undistort_frame, reduced_dim, interpolation=cv2.INTER_AREA)
-            img3 = cv2.resize(self.lab_space_frame, reduced_dim, interpolation=cv2.INTER_AREA)
-            img4 = cv2.resize(thresh_yellow_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
-            img5 = cv2.resize(thresh_light_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
-            img6 = cv2.resize(thresh_sum_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
-            img7 = cv2.resize(opening_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
-            img8 = cv2.resize(processed_three, reduced_dim, interpolation=cv2.INTER_AREA)
-            img9 = cv2.resize(self.detected_frame, reduced_dim, interpolation=cv2.INTER_AREA)
-
-            # Merge into one image
-            row1 = np.concatenate((img1, img2, img3), axis=1)
-            row2 = np.concatenate((img4, img5, img6), axis=1)
-            row3 = np.concatenate((img7, img8, img9), axis=1)
-            all_frames = np.concatenate((row1, row2, row3), axis=0)
-
-            # Deal with any rounding errors
-            if (all_frames.shape[0], all_frames.shape[1]) != self.resolution:
-                all_frames = cv2.resize(all_frames,self.resolution, interpolation=cv2.INTER_AREA)
-
-            # Display
-            cv2.namedWindow("Original, Undistorted, Lab // "
-                       "Yellow Thresh, Light Thresh, Sum Thresh // "
-                       "opening_frame, Closing, Final", cv2.WINDOW_FULLSCREEN)
-            cv2.imshow("Original, Undistorted, Lab // "
-                       "Yellow Thresh, Light Thresh, Sum Thresh // "
-                       "opening_frame, Closing, Final", all_frames)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-
-            # Save video
-            self.video_writer.write(all_frames)
-
-    # Draw the marker corners and pose info on the image for debugging.
-    def visualize_marker_pose(self, extLeft, extRight, extTop, extBot, cX, cY, depth, c):
-        self.detected_frame = self.cur_frame
-
-        # Draw extreme points on image
-        cv2.circle(self.detected_frame, extLeft, 8, (255, 0, 0), -1)
-        cv2.circle(self.detected_frame, extRight, 8, (255, 0, 0), -1)
-        cv2.circle(self.detected_frame, extTop, 8, (255, 0, 255), -1)
-        cv2.circle(self.detected_frame, extBot, 8, (0, 0, 255), -1)
-
-        # Draw center
-        cv2.circle(self.detected_frame, (cX, cY), 7, (255, 255, 255), -1)
-        cv2.putText(self.detected_frame, "center", (cX + 20, cY + 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-        # Draw depth
-        cv2.putText(self.detected_frame, "Distance: {}".format(np.around(depth, 1)), (cX - 40, cY - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-        # Draw XY error
-        cv2.putText(self.detected_frame, "XY Error: {}, {}".format(np.around(self.pose[0], 1), np.around(self.pose[1], 1)), (cX - 40, cY - 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-        # Draw contours on image
-        cv2.drawContours(self.detected_frame, [c], 0, (0, 255, 0), 3)
+        self.depth = -1
 
     # This method tracks the color yellow. First, the image is undistorted to account for any lens distortion. Next,
     # it is converted from BGR to LAB color space. The LAB color space is great for color detection since it separates
@@ -259,21 +193,16 @@ class ColorMarkerTracker(MarkerTracker):
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
 
-                # Find the distance to the platform
-                # TODO: This will most likely be replaced with depth from the Realsense camera
-                pixel_length = peri / 4
-                depth = (self.focal_length / pixel_length) * self.marker_length
-
-                # Determine the *approximate* scale factor
-                scale_factor = self.marker_length / pixel_length
-
                 # Find positional error from center of platform; Pixels
                 err_x = cX - (self.get_resolution()[0] / 2)
                 err_y = (self.get_resolution()[1] / 2) - cY
 
+                # Calculate the scale factor using the pixel marker length
+                self.calculate_scale_factor(peri)
+
                 # Convert to meters
-                err_x *= scale_factor
-                err_y *= scale_factor
+                err_x *= self.scale_factor
+                err_y *= self.scale_factor
 
                 self.set_pose(np.array([err_x, err_y, 0]))
 
@@ -281,7 +210,7 @@ class ColorMarkerTracker(MarkerTracker):
                 self.marker_found = True
                 if self.get_debug():
                     self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
-                                                               cX, cY, depth, c)
+                                                               cX, cY, self.depth, c)
                     self.visualize()
 
                 return True
@@ -292,6 +221,99 @@ class ColorMarkerTracker(MarkerTracker):
             self.visualize()
 
         return False
+
+    # For debugging and recording. If on the Pi, we only want to save videos, since the GUI may not be available.
+    def visualize(self):
+        if not self.marker_found:
+            self.detected_frame = self.cur_frame
+
+        if self.use_rpi:
+
+            self.video_writer.write(self.detected_frame)
+        else:
+            # Reduce all 9 image dimensions so they can be merged together
+            reduced_dim = (self.resolution[0] / 3, self.resolution[1] / 3)
+
+            # Convert the mask images into three-channel images so they can be merged with the rest
+            thresh_yellow_frame_three = cv2.merge(
+                (self.thresh_yellow_frame, self.thresh_yellow_frame, self.thresh_yellow_frame))
+            thresh_light_frame_three = cv2.merge(
+                (self.thresh_light_frame, self.thresh_light_frame, self.thresh_light_frame))
+            thresh_sum_frame_three = cv2.merge(
+                (self.thresh_sum_frame, self.thresh_sum_frame, self.thresh_sum_frame))
+            opening_frame_three = cv2.merge((self.opening_frame, self.opening_frame, self.opening_frame))
+            processed_three = cv2.merge((self.processed_frame, self.processed_frame, self.processed_frame))
+
+            # Resize
+            img1 = cv2.resize(self.read(), reduced_dim, interpolation=cv2.INTER_AREA)
+            img2 = cv2.resize(self.undistort_frame, reduced_dim, interpolation=cv2.INTER_AREA)
+            img3 = cv2.resize(self.lab_space_frame, reduced_dim, interpolation=cv2.INTER_AREA)
+            img4 = cv2.resize(thresh_yellow_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img5 = cv2.resize(thresh_light_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img6 = cv2.resize(thresh_sum_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img7 = cv2.resize(opening_frame_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img8 = cv2.resize(processed_three, reduced_dim, interpolation=cv2.INTER_AREA)
+            img9 = cv2.resize(self.detected_frame, reduced_dim, interpolation=cv2.INTER_AREA)
+
+            # Merge into one image
+            row1 = np.concatenate((img1, img2, img3), axis=1)
+            row2 = np.concatenate((img4, img5, img6), axis=1)
+            row3 = np.concatenate((img7, img8, img9), axis=1)
+            all_frames = np.concatenate((row1, row2, row3), axis=0)
+
+            # Deal with any rounding errors
+            if (all_frames.shape[0], all_frames.shape[1]) != self.resolution:
+                all_frames = cv2.resize(all_frames, self.resolution, interpolation=cv2.INTER_AREA)
+
+            # Display
+            cv2.namedWindow("Original, Undistorted, Lab // "
+                            "Yellow Thresh, Light Thresh, Sum Thresh // "
+                            "opening_frame, Closing, Final", cv2.WINDOW_FULLSCREEN)
+            cv2.imshow("Original, Undistorted, Lab // "
+                       "Yellow Thresh, Light Thresh, Sum Thresh // "
+                       "opening_frame, Closing, Final", all_frames)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+
+            # Save video
+            self.video_writer.write(all_frames)
+
+    # Draw the marker corners and pose info on the image for debugging.
+    def visualize_marker_pose(self, extLeft, extRight, extTop, extBot, cX, cY, depth, c):
+        self.detected_frame = self.cur_frame
+
+        # Draw extreme points on image
+        cv2.circle(self.detected_frame, extLeft, 8, (255, 0, 0), -1)
+        cv2.circle(self.detected_frame, extRight, 8, (255, 0, 0), -1)
+        cv2.circle(self.detected_frame, extTop, 8, (255, 0, 255), -1)
+        cv2.circle(self.detected_frame, extBot, 8, (0, 0, 255), -1)
+
+        # Draw center
+        cv2.circle(self.detected_frame, (cX, cY), 7, (255, 255, 255), -1)
+        cv2.putText(self.detected_frame, "center", (cX + 20, cY + 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+        # Draw depth
+        cv2.putText(self.detected_frame, "Distance: {}".format(np.around(depth, 1)), (cX - 40, cY - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+        # Draw XY error
+        cv2.putText(self.detected_frame,
+                    "XY Error: {}, {}".format(np.around(self.pose[0], 1), np.around(self.pose[1], 1)),
+                    (cX - 40, cY - 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+        # Draw contours on image
+        cv2.drawContours(self.detected_frame, [c], 0, (0, 255, 0), 3)
+
+    def calculate_scale_factor(self, peri):
+        # Find the distance to the platform
+        # TODO: This will most likely be replaced with depth from the Realsense camera
+        pixel_length = peri / 4
+        self.depth = (self.focal_length / pixel_length) * self.marker_length
+
+        # Determine the *approximate* scale factor
+        self.scale_factor = self.marker_length / pixel_length
 
     # Checks if the contour approximation is a rectangle.
     def is_rectangle(self, approx):
@@ -306,10 +328,8 @@ class ColorMarkerTracker(MarkerTracker):
             return True if 0.75 <= ar <= 1.25 else False
         return False
 
-    def get_detected_frame(self):
-        return self.detected_frame
 
-# Tracks an Aruco marker.
+# Tracks an Aruco marker. Marker length is expected in meters
 class ArucoTracker(MarkerTracker):
     def __init__(self,
                  src=0,
@@ -332,19 +352,6 @@ class ArucoTracker(MarkerTracker):
 
         self.rvec = None
 
-    # Visualize the Aruco marker detection. If on the Pi, only saves a video, since the GUI may not be available.
-    def visualize(self):
-        if not self.marker_found:
-            self.detected_frame = self.cur_frame
-
-        self.video_writer.write(self.detected_frame)
-
-        if not self.use_rpi:
-            cv2.imshow("Aruco Tracker", self.detected_frame)
-            print(self.pose)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-
     # The Aruco marker is tracked here. The pose is saved if the marker is found.
     # Returns True if found, else False.
     def track_marker(self, alt=0):
@@ -364,21 +371,42 @@ class ArucoTracker(MarkerTracker):
             self.rvec = self.rvec[0][0]
             self.pose = self.pose[0][0]
 
+            # Calculate the scale factor conversion from marker length in pixels to meters
+            self.calculate_scale_factor(corners)
+
             # Debug
             self.marker_found = True
             if self.get_debug():
                 self.detected_frame = aruco.drawAxis(self.cur_frame, self.camera_mat, self.dist_coeffs,
                                                      self.rvec, self.pose, 0.1)
                 self.visualize()
+        else:
+            # Debug
+            self.marker_found = False
+            if self.get_debug():
+                self.visualize()
 
-            return True
+    # Visualize the Aruco marker detection. If on the Pi, only saves a video, since the GUI may not be available.
+    def visualize(self):
+        if not self.marker_found:
+            self.detected_frame = self.cur_frame
+        else:
+            print(self.pose)
 
-        # Debug
-        self.marker_found = False
-        if self.get_debug():
-            self.visualize()
+        if not self.use_rpi:
+            cv2.imshow("Aruco Tracker", self.detected_frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
 
-        return False
+        self.video_writer.write(self.detected_frame)
+
+    def calculate_scale_factor(self, corners):
+        # Calculate the pixel scale factor (pixel -> meters unit conversion)
+        x = corners[0][1][0] - corners[0][0][0]
+        y = corners[0][1][1] - corners[0][0][1]
+        marker_length_pixels = np.sqrt(np.square(x) + np.square(y))
+
+        self.scale_factor = self.marker_length / marker_length_pixels
 
     # Use this function to create and save an Aruco marker if you do not already have one.
     def create_and_save_marker(self):
