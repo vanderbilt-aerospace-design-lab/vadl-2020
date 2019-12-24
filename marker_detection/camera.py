@@ -19,11 +19,11 @@ parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
 parser.add_argument('-d','--dir', default=VIDEO_DIR,
                     help="Directory to save file in")
-parser.add_argument('-n','--file', default=0,
+parser.add_argument('-n','--file', default=None,
                     help="File name to save video")
 parser.add_argument('-r','--resolution', default=(640,480),
                     help="Camera resolution")
-parser.add_argument('-f','--fps', default=0,
+parser.add_argument('-f','--fps', default=30,
                     help="Camera frame rate")
 
 args = vars(parser.parse_args())
