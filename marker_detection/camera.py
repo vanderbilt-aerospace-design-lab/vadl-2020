@@ -149,13 +149,13 @@ class VideoWriter(Camera):
 
         # Codec encoding. You shouldn't have to mess with this, and it is highly recommended you don't!
         self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        self.writer = cv2.VideoWriter(video_dir + "/" + self.video_file, self.fourcc, framerate, resolution, True)
+        self.writer = cv2.VideoWriter(video_dir + "/" + self.video_file + self.ext, self.fourcc, framerate, resolution, True)
 
     # Generates a file name based off the current date and time.
     def create_file_name(self):
         date = datetime.datetime.now()
         return str(date.year) + "_" + str(date.month) + "_" \
-               + str(date.day) + "_" + str(date.hour) + "_" + str(date.minute) + self.ext
+               + str(date.day) + "_" + str(date.hour) + "_" + str(date.minute)
 
     # Write a single frame to the video output.
     def write(self, frame):
