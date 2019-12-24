@@ -21,7 +21,7 @@ parser.add_argument('-d','--dir', default=VIDEO_DIR,
                     help="Directory to save file in")
 parser.add_argument('-n','--file', default=None,
                     help="File name to save video")
-parser.add_argument('-r','--resolution', default=(640,480),
+parser.add_argument('-r','--resolution', default=480,
                     help="Camera resolution")
 parser.add_argument('-f','--fps', default=30,
                     help="Camera frame rate")
@@ -34,6 +34,13 @@ if not isinstance(args["video"], int):
     VIDEO_FILE_STREAM = args["video"]
 else:
     VIDEO_FILE_STREAM = 0
+
+# Currently only supports 1080p and 480p
+if args["resolution"] == 1080:
+    args["resolution"] = (1920, 1080)
+else:
+    args["resolution"] = (640, 480)
+
 
 ''' Camera Class
 
