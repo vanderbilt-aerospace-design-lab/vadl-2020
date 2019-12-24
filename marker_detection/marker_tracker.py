@@ -448,7 +448,7 @@ class ArucoTracker(MarkerTracker):
         return self.rvec
 
 def main():
-    mt = ArucoTracker(src=args["video"], use_pi=args["picamera"], debug=args["debug"])
+    mt = ArucoTracker(src=args["video"], use_pi=args["picamera"], debug=args["debug"], resolution=(1920, 1080), framerate=20)
 
     while True:
         mt.track_marker()

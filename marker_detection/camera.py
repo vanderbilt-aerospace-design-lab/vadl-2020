@@ -21,6 +21,8 @@ parser.add_argument('-d','--dir', default=VIDEO_DIR,
                     help="Directory to save file in")
 parser.add_argument('-n','--file', default=None,
                     help="File name to save video")
+
+# TODO: Fix resolution and frame rate not actually changing anything
 parser.add_argument('-r','--resolution', default=480,
                     help="Camera resolution")
 parser.add_argument('-f','--fps', default=30,
