@@ -122,7 +122,10 @@ class VideoStreamer(Camera):
 
     # Returns the frame as a np array
     def read(self):
-        return self.vs.read()
+        if isinstance(self.vs, FileVideoStream):
+            return self.vs.stream.read()[1]
+        else:
+            return self.vs.read()
 
 ''' VideoWriter Class
 
@@ -145,7 +148,6 @@ class VideoWriter(Camera):
         self.video_file = video_file
         if self.video_file is None:
             self.video_file = self.create_file_name()
-        print(self.video_file)
 
         # Codec encoding. You shouldn't have to mess with this, and it is highly recommended you don't!
         self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
