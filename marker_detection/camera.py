@@ -36,8 +36,9 @@ else:
     VIDEO_FILE_STREAM = 0
 
 # Currently only supports 1080p and 480p
+# The Arducam is actually 1920 x 1088 and fails w/ 1080 set
 if args["resolution"] == 1080:
-    args["resolution"] = (1920, 1080)
+    args["resolution"] = (1920, 1088)
 else:
     args["resolution"] = (640, 480)
 
