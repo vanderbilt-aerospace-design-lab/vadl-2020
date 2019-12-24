@@ -3,6 +3,27 @@ from abc import abstractmethod
 import cv2
 import cv2.aruco as aruco
 import numpy as np
+import argparse
+import os
+
+#Set up option parsing to get connection string
+parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
+parser.add_argument('-v','--video', default=0,
+                    help="Play video instead of live stream.")
+parser.add_argument("-p", "--picamera", type=int, default=-1,
+ 	help="Indicates whether or not the Raspberry Pi camera should be used")
+parser.add_argument('-d',"--debug", default=0,
+                   help="Vehicle connection target string. If specified, SITL will be used.")
+
+args = vars(parser.parse_args())
+
+if not isinstance(args["video"], int):
+    if not os.path.exists(args["video"]):
+        raise Exception("ERROR: Video file does not exist")
+    VIDEO_FILE_STREAM = args["video"]
+else:
+    VIDEO_FILE_STREAM = 0
+
 
 ''' Marker Tracker Classes
 
@@ -427,7 +448,7 @@ class ArucoTracker(MarkerTracker):
         return self.rvec
 
 def main():
-    mt = ArucoTracker(src=0, debug=1)
+    mt = ArucoTracker(src=args["video"], use_pi=args["picamera"], debug=args["debug"])
 
     while True:
         mt.track_marker()

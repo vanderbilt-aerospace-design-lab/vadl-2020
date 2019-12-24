@@ -5,10 +5,27 @@ from utils import file_utils
 import cv2
 import os
 import datetime
+import argparse
 
 # specify as relative or absolute
 CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
 VIDEO_DIR = "marker_detection/videos"
+
+#Set up option parsing to get connection string
+parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
+parser.add_argument('-v','--video', default=0,
+                    help="Play video instead of live stream.")
+parser.add_argument("-p", "--picamera", type=int, default=-1,
+ 	help="Indicates whether or not the Raspberry Pi camera should be used")
+
+args = vars(parser.parse_args())
+
+if not isinstance(args["video"], int):
+    if not os.path.exists(args["video"]):
+        raise Exception("ERROR: Video file does not exist")
+    VIDEO_FILE_STREAM = args["video"]
+else:
+    VIDEO_FILE_STREAM = 0
 
 ''' Camera Class
 
@@ -20,7 +37,6 @@ class Camera(object):
                  use_pi=-1,
                  resolution=(640, 480),
                  framerate=30):
-
         self.resolution = resolution
         self.framerate = framerate
         self.use_rpi = 1 if use_pi > 0 else 0
@@ -133,7 +149,7 @@ class VideoWriter(Camera):
 
 
 def main():
-    vs = VideoStreamer()
+    vs = VideoStreamer(src=args["video"],use_pi=args["picamera"])
     vw = VideoWriter(framerate=15)
     while True:
         vw.write(vs.read())

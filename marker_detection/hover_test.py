@@ -12,7 +12,6 @@ import os
 from utils import dronekit_utils
 from marker_tracker import ArucoTracker
 
-DEBUG = 0
 TARGET_ALTITUDE = 2 # Meters
 
 # Files relative to project directory
@@ -24,14 +23,16 @@ PID_FILE = "marker_detection/pid_data/pid_0.txt"
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
 parser.add_argument('--sitl',
                    help="Vehicle connection target string. If specified, SITL will be used.")
-parser.add_argument('-v','--video',
+parser.add_argument('-v','--video', default=0,
                     help="Play video instead of live stream.")
 parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
+parser.add_argument('-d',"--debug", default=0,
+                   help="Vehicle connection target string. If specified, SITL will be used.")
 
 args = vars(parser.parse_args())
 
-if args["video"] is not None:
+if not isinstance(args["video"], int):
     if not os.path.exists(args["video"]):
         raise Exception("ERROR: Video file does not exist")
     VIDEO_FILE_STREAM = args["video"]
@@ -49,7 +50,6 @@ def connect_vehicle():
 
     # Connect to the Vehicle
     return dronekit_utils.connect_vehicle(CONNECTION_STRING)
-
 
 def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
@@ -118,7 +118,7 @@ def main():
                                   use_pi=args["picamera"],
                                   resolution=(640, 480),
                                   framerate=15,
-                                  debug=DEBUG)
+                                  debug=args["debug"])
 
     # Connect to the Pixhawk
     vehicle = connect_vehicle()
