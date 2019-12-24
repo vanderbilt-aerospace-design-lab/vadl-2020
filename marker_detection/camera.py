@@ -12,11 +12,15 @@ CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
 VIDEO_DIR = "marker_detection/videos"
 
 #Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
+parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker')
 parser.add_argument('-v','--video', default=0,
                     help="Play video instead of live stream.")
 parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
+parser.add_argument('-d','--dir', default=VIDEO_DIR,
+                    help="Directory to save file in")
+parser.add_argument('-f','--file', default=0,
+                    help="File name to save video")
 
 args = vars(parser.parse_args())
 
