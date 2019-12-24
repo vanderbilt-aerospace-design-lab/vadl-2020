@@ -19,8 +19,12 @@ parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
 parser.add_argument('-d','--dir', default=VIDEO_DIR,
                     help="Directory to save file in")
-parser.add_argument('-f','--file', default=0,
+parser.add_argument('-n','--file', default=0,
                     help="File name to save video")
+parser.add_argument('-r','--resolution', default=(640,480),
+                    help="Camera resolution")
+parser.add_argument('-f','--fps', default=0,
+                    help="Camera frame rate")
 
 args = vars(parser.parse_args())
 
@@ -153,8 +157,15 @@ class VideoWriter(Camera):
 
 
 def main():
-    vs = VideoStreamer(src=args["video"],use_pi=args["picamera"])
-    vw = VideoWriter()
+    vs = VideoStreamer(src=args["video"],
+                       use_pi=args["picamera"],
+                       resolution=args["resolution"],
+                       framerate=args["fps"])
+    vw = VideoWriter(video_dir=args["dir"],
+                     video_file=args["file"],
+                     resolution=args["resolution"],
+                     framerate=args["fps"])
+
     print("Capturing images...")
     while True:
         vw.write(vs.read())
