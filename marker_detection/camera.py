@@ -1,13 +1,11 @@
 import time
 from imutils.video import VideoStream
 from imutils.video import FileVideoStream
-from utils import file_utils
 import cv2
 import os
 import datetime
 
 # specify as relative or absolute
-CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
 VIDEO_DIR = "marker_detection/videos"
 
 ''' Camera Class
@@ -24,9 +22,6 @@ class Camera(object):
         self.framerate = framerate
         self.use_rpi = 1 if use_pi > 0 else 0
 
-        # Load camera calibration parameters
-        self.camera_mat, self.dist_coeffs = file_utils.load_yaml(os.path.abspath(CALIBRATION_FILE))
-        self.focal_length = self.camera_mat[1][1]
 
     def get_resolution(self):
         return self.resolution
@@ -34,14 +29,7 @@ class Camera(object):
     def get_framerate(self):
         return self.framerate
 
-    def get_camera_mat(self):
-        return self.camera_mat
 
-    def get_dist_coeffs(self):
-        return self.dist_coeffs
-
-    def get_focal_length(self):
-        return self.focal_length
 
 ''' VideoStreamer Class
 

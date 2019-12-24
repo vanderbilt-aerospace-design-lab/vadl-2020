@@ -1,10 +1,13 @@
 from camera import VideoStreamer, VideoWriter
+from utils import file_utils
 from abc import abstractmethod
 import cv2
 import cv2.aruco as aruco
 import numpy as np
 import argparse
 import os
+
+CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
@@ -55,6 +58,11 @@ class MarkerTracker(VideoStreamer):
         self.scale_factor = None
         self.debug = debug
 
+        # Load camera calibration parameters
+        self.camera_mat, self.dist_coeffs = file_utils.load_yaml(os.path.abspath(CALIBRATION_FILE))
+        self.focal_length = self.camera_mat[1][1]
+
+
         # Save video
         if self.debug:
             self.video_writer = VideoWriter(resolution=self.get_resolution(), framerate=self.get_framerate())
@@ -76,6 +84,15 @@ class MarkerTracker(VideoStreamer):
 
     def get_scale_factor(self):
         return self.scale_factor
+
+    def get_camera_mat(self):
+        return self.camera_mat
+
+    def get_dist_coeffs(self):
+        return self.dist_coeffs
+
+    def get_focal_length(self):
+        return self.focal_length
 
     def set_pose(self, pose):
         self.pose = pose
