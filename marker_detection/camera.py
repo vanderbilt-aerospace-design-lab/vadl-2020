@@ -106,11 +106,11 @@ class VideoStreamer(Camera):
             self.vs = FileVideoStream(path=src)
 
         # Let camera warm up
-        time.sleep(1.0)
+        time.sleep(2.0)
 
     # Returns the frame as a np array
     def read(self):
-        return self.vs.stream.read()[1]
+        return self.vs.read()
 
 ''' VideoWriter Class
 
@@ -154,7 +154,8 @@ class VideoWriter(Camera):
 
 def main():
     vs = VideoStreamer(src=args["video"],use_pi=args["picamera"])
-    vw = VideoWriter(framerate=15)
+    vw = VideoWriter()
+    print("Capturing images...")
     while True:
         vw.write(vs.read())
 
