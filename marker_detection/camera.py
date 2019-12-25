@@ -2,8 +2,8 @@ import time
 from imutils.video import VideoStream
 from imutils.video import FileVideoStream
 import cv2
-import os
 import datetime
+import time
 
 # specify as relative or absolute
 VIDEO_DIR = "marker_detection/videos"
@@ -16,8 +16,8 @@ VIDEO_DIR = "marker_detection/videos"
 class Camera(object):
     def __init__(self,
                  use_pi=-1,
-                 resolution=(1920, 1080),
-                 framerate=25):
+                 resolution=(640, 480),
+                 framerate=30):
         self.resolution = resolution
         self.framerate = framerate
         self.use_rpi = 1 if use_pi > 0 else 0
@@ -54,8 +54,8 @@ class VideoStreamer(Camera):
     def __init__(self,
                  src=0,
                  use_pi=-1,
-                 resolution=(1920, 1080),
-                 framerate=25):
+                 resolution=(640, 480),
+                 framerate=30):
 
         super(VideoStreamer, self).__init__(use_pi=use_pi,
                                             resolution=resolution,
@@ -92,8 +92,8 @@ class VideoWriter(Camera):
                  video_dir=VIDEO_DIR,
                  video_file=None,
                  ext=".avi",
-                 resolution=(1920, 1080),
-                 framerate=25):
+                 resolution=(640, 480),
+                 framerate=30):
 
         super(VideoWriter, self).__init__(resolution=resolution,
                                           framerate=framerate)
@@ -107,6 +107,8 @@ class VideoWriter(Camera):
         self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         self.writer = cv2.VideoWriter(video_dir + "/" + self.video_file + self.ext, self.fourcc, framerate, resolution, True)
 
+        self.frame_start = 0
+
     # Generates a file name based off the current date and time.
     def create_file_name(self):
         date = datetime.datetime.now()
@@ -115,7 +117,13 @@ class VideoWriter(Camera):
 
     # Write a single frame to the video output.
     def write(self, frame):
+        self.frame_start = time.time()
         self.writer.write(frame)
+        self.wait()
+
+    # Waits the appropriate amount of time to maintain the proper FPS.
+    def wait(self):
+        time.sleep((1.0 / self.framerate) - time.time() + self.frame_start)
 
     # Release the output when done (rarely needed - video is not corrupted if you use Ctrl-C or turn off your computer)
     def release(self):

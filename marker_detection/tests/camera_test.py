@@ -1,11 +1,14 @@
-from marker_detection.camera import VideoStreamer
+from marker_detection.camera import VideoStreamer, VideoWriter
 import argparse
 import os
 import cv2
 import numpy as np
+import time
+
+VIDEO_DIR = "marker_detection/videos"
 
 #Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker')
+parser = argparse.ArgumentParser(description='Test the VideoStreamer and VideoWriter classes')
 parser.add_argument('-v','--video', default=0,
                     help="Play video instead of live stream.")
 parser.add_argument("-p", "--picamera", type=int, default=-1,
@@ -14,6 +17,10 @@ parser.add_argument('-r','--resolution', type=int, default=480,
                     help="Camera resolution")
 parser.add_argument('-f','--fps', type=int, default=30,
                     help="Camera frame rate")
+parser.add_argument('-d','--dir', default=VIDEO_DIR,
+                    help="Directory to save file")
+parser.add_argument('-n','--name', default=None,
+                    help="File name")
 
 args = vars(parser.parse_args())
 
@@ -24,12 +31,17 @@ if not isinstance(args["video"], int):
 else:
     VIDEO_FILE_STREAM = 0
 
-# Currently only supports 1080p and 480p
-# The Arducam is actually 1920 x 1088 and will round 1080 up
+# Pick resolution
 if args["resolution"] == 1080:
     args["resolution"] = (1920, 1080)
+elif args["resolution"] == 720:
+    args["resolution"] = (1280, 720)
 elif args["resolution"] == 480:
     args["resolution"] = (640, 480)
+elif args["resolution"] == 240:
+    args["resolution"] = (352, 240)
+elif args["resolution"] == 144:
+    args["resolution"] = (256, 144)
 else:
     args["resolution"] = (64, 64)
 
@@ -39,15 +51,24 @@ def main():
                        resolution=args["resolution"],
                        framerate=args["fps"])
 
-    print("Capturing images...")
-    while True:
-        frame = vs.read()
-        if args["picamera"] < 1:
-            cv2.imshow("Image", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-        print(np.shape(frame))
+    # ''' Test VideoStreamer'''
+    # print("Capturing images...")
+    # for i in range(0, 50):
+    #     frame = vs.read()
+    #     if args["picamera"] < 1:
+    #         cv2.imshow("Image", frame)
+    #         if cv2.waitKey(1) & 0xFF == ord('q'):
+    #             cv2.destroyAllWindows()
+    #     print(np.shape(frame))
 
+    ''' Test VideoWriter'''
+    vw = VideoWriter(video_dir=args["dir"],
+                     video_file=args["name"],
+                     resolution=args["resolution"],
+                     framerate=args["fps"])
+    start = time.time()
+    while (time.time() - start) < 3:
+        vw.write(vs.read())
 
 if __name__ == "__main__":
     main()
