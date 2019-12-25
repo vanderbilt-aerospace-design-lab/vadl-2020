@@ -81,6 +81,10 @@ class VideoStreamer(Camera):
         else:
             return self.vs.read()
 
+    # Terminate the capture thread.
+    def stop(self):
+        self.vs.stop()
+
 ''' VideoWriter Class
 
     This class is used to save videos. It will automatically name your file using the current date and time if you 

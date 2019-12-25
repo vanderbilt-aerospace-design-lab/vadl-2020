@@ -70,5 +70,8 @@ def main():
     while (time.time() - start) < 3:
         vw.write(vs.read())
 
+    vs.stop()
+    vw.release()
+
 if __name__ == "__main__":
     main()
