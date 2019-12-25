@@ -7,6 +7,7 @@ import numpy as np
 import os
 
 CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
+# CALIBRATION_FILE = "camera_calibration/calibration_data/alex_laptop_camera.yaml"
 
 ''' Marker Tracker Classes
 
@@ -389,8 +390,8 @@ class ArucoTracker(MarkerTracker):
     def track_marker(self, alt=0):
         # Find the marker
         self.cur_frame = self.read()
-
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(self.cur_frame, self.aruco_dict,
+        undistorted_img = cv2.undistort(self.cur_frame,self.camera_mat,self.dist_coeffs)
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(undistorted_img, self.aruco_dict,
                                                               parameters=self.aruco_param)
 
         # If a marker is found, estimate the pose
@@ -434,7 +435,6 @@ class ArucoTracker(MarkerTracker):
 
     def calculate_scale_factor(self, corners):
         # Calculate the pixel scale factor (pixel -> meters unit conversion)
-        corners = cv2.undistort(corners, self.camera_mat, self.dist_coeffs)
         x = corners[0][1][0] - corners[0][0][0]
         y = corners[0][1][1] - corners[0][0][1]
         marker_length_pixels = np.sqrt(np.square(x) + np.square(y))
