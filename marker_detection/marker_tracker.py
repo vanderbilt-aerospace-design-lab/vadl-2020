@@ -390,8 +390,7 @@ class ArucoTracker(MarkerTracker):
     def track_marker(self, alt=0):
         # Find the marker
         self.cur_frame = self.read()
-        undistorted_img = cv2.undistort(self.cur_frame,self.camera_mat,self.dist_coeffs)
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(undistorted_img, self.aruco_dict,
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(self.cur_frame, self.aruco_dict,
                                                               parameters=self.aruco_param)
 
         # If a marker is found, estimate the pose
@@ -461,7 +460,7 @@ class ArucoTracker(MarkerTracker):
 
     def get_pose_body_coords(self):
         # Flip signs because aruco has bottom right and down as positive axis
-        pose = np.array([self.pose[0], -self.pose[1]])
+        pose = np.array([self.pose[0] - 1.57, -self.pose[1]])
 
         # Convert camera resolution from pixels to meters; reshape from dimensions (1,2) to (2,)
         cam_dimensions = np.squeeze(np.array([self.resolution]) * self.scale_factor)
