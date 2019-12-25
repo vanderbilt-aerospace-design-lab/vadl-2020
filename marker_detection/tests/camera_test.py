@@ -1,8 +1,6 @@
 from marker_detection.camera import VideoStreamer, VideoWriter
 import argparse
 import os
-import cv2
-import numpy as np
 import time
 
 VIDEO_DIR = "marker_detection/videos"
