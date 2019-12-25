@@ -104,12 +104,15 @@ class VideoWriter(Camera):
 
         self.ext = ext
         self.video_file = video_file
+        self.video_dir = video_dir
         if self.video_file is None:
             self.video_file = self.create_file_name()
+        if self.video_dir is None:
+            self.video_dir = VIDEO_DIR
 
         # Codec encoding. You shouldn't have to mess with this, and it is highly recommended you don't!
         self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        self.writer = cv2.VideoWriter(video_dir + "/" + self.video_file + self.ext, self.fourcc, framerate, resolution, True)
+        self.writer = cv2.VideoWriter(self.video_dir + "/" + self.video_file + self.ext, self.fourcc, framerate, resolution, True)
 
         self.frame_start = 0
 

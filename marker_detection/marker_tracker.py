@@ -4,29 +4,9 @@ from abc import abstractmethod
 import cv2
 import cv2.aruco as aruco
 import numpy as np
-import argparse
 import os
 
 CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
-
-#Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
-parser.add_argument('-v','--video', default=0,
-                    help="Play video instead of live stream.")
-parser.add_argument("-p", "--picamera", type=int, default=-1,
- 	help="Indicates whether or not the Raspberry Pi camera should be used")
-parser.add_argument('-d',"--debug", default=0,
-                   help="Vehicle connection target string. If specified, SITL will be used.")
-
-args = vars(parser.parse_args())
-
-if not isinstance(args["video"], int):
-    if not os.path.exists(args["video"]):
-        raise Exception("ERROR: Video file does not exist")
-    VIDEO_FILE_STREAM = args["video"]
-else:
-    VIDEO_FILE_STREAM = 0
-
 
 ''' Marker Tracker Classes
 
@@ -44,7 +24,9 @@ class MarkerTracker(VideoStreamer):
                  resolution=(640, 480),
                  framerate=30,
                  marker_length=0.159,
-                 debug=0):
+                 debug=0,
+                 video_dir=None,
+                 video_file=None):
 
         super(MarkerTracker, self).__init__(src=src,
                                             use_pi=use_pi,
@@ -65,7 +47,10 @@ class MarkerTracker(VideoStreamer):
 
         # Save video
         if self.debug:
-            self.video_writer = VideoWriter(resolution=self.get_resolution(), framerate=self.get_framerate())
+            self.video_writer = VideoWriter(video_dir=video_dir,
+                                            video_file=video_file,
+                                            resolution=self.get_resolution(),
+                                            framerate=self.get_framerate())
 
     def is_marker_found(self):
         return self.marker_found
@@ -121,14 +106,18 @@ class ColorMarkerTracker(MarkerTracker):
                  resolution=(640, 480),
                  framerate=30,
                  marker_length=3.048,
-                 debug=0):
+                 debug=0,
+                 video_dir=None,
+                 video_file=None):
 
         super(ColorMarkerTracker, self).__init__(src=src,
                                                  use_pi=use_pi,
                                                  resolution=resolution,
                                                  framerate=framerate,
                                                  marker_length=marker_length,
-                                                 debug=debug)
+                                                 debug=debug,
+                                                 video_dir=video_dir,
+                                                 video_file=video_file)
 
         # Below the altitude threshold, dynamic Otsu thresholding is performed on the lightness spectrum
         # in the LAB color space. Above the threshold, binary thresholding is performed. This was determined to be the
@@ -264,9 +253,10 @@ class ColorMarkerTracker(MarkerTracker):
     def visualize(self):
         if not self.marker_found:
             self.detected_frame = self.cur_frame
+        else:
+            print(self.pose)
 
         if self.use_rpi:
-
             self.video_writer.write(self.detected_frame)
         else:
             # Reduce all 9 image dimensions so they can be merged together
@@ -375,14 +365,18 @@ class ArucoTracker(MarkerTracker):
                  resolution=(640, 480),
                  framerate=30,
                  marker_length=0.159,
-                 debug=0):
+                 debug=0,
+                 video_dir=None,
+                 video_file=None):
 
         super(ArucoTracker, self).__init__(src=src,
                                           use_pi=use_pi,
                                           resolution=resolution,
                                           framerate=framerate,
                                           marker_length=marker_length,
-                                          debug=debug)
+                                          debug=debug,
+                                          video_dir=video_dir,
+                                          video_file=video_file)
 
         # Create aruco dictionary
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
@@ -463,16 +457,5 @@ class ArucoTracker(MarkerTracker):
 
     def get_marker_rotation(self):
         return self.rvec
-
-def main():
-    mt = ArucoTracker(src=args["video"], use_pi=args["picamera"], debug=args["debug"], resolution=(1920, 1080), framerate=20)
-
-    while True:
-        mt.track_marker()
-        if mt.is_marker_found():
-            print(mt.get_pose())
-
-if __name__ == "__main__":
-    main()
 
 
