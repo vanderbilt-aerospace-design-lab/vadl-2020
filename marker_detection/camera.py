@@ -123,7 +123,10 @@ class VideoWriter(Camera):
 
     # Waits the appropriate amount of time to maintain the proper FPS.
     def wait(self):
-        time.sleep((1.0 / self.framerate) - time.time() + self.frame_start)
+        try:
+            time.sleep((1.0 / self.framerate) - time.time() + self.frame_start)
+        except:
+            raise ValueError("Frame rate specified is faster than actual camera frame rate")
 
     # Release the output when done (rarely needed - video is not corrupted if you use Ctrl-C or turn off your computer)
     def release(self):
