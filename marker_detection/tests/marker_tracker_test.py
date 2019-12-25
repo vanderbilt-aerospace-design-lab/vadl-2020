@@ -14,7 +14,7 @@ parser.add_argument('-r','--resolution', type=int, default=480,
                     help="Camera resolution")
 parser.add_argument('-f','--fps', type=int, default=30,
                     help="Camera frame rate")
-parser.add_argument('-d','--dir', default=None,
+parser.add_argument('--dir', default=None,
                     help="Directory to save file")
 parser.add_argument('-n','--name', default=None,
                     help="File name")
