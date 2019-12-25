@@ -458,4 +458,14 @@ class ArucoTracker(MarkerTracker):
     def get_marker_rotation(self):
         return self.rvec
 
+    def get_pose_body_coords(self):
+        # Flip signs because aruco has bottom right and down as positive axis
+        pose = np.array([self.pose[0], -self.pose[1]])
+
+        # Convert camera resolution from pixels to meters; reshape from dimensions (1,2) to (2,)
+        cam_dimensions = np.squeeze(np.array([self.resolution]) * self.scale_factor)
+
+        return cam_dimensions / 2 - pose
+
+
 
