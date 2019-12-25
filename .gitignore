@@ -1,7 +1,7 @@
 camera_calibration/calibration_images_*
 *.pyc
-marker_detection/*_data
 flight_videos/
 .idea/
 *.jpg
 *.png
+*.txt
