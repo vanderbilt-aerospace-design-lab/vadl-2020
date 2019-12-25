@@ -434,6 +434,7 @@ class ArucoTracker(MarkerTracker):
 
     def calculate_scale_factor(self, corners):
         # Calculate the pixel scale factor (pixel -> meters unit conversion)
+        corners = cv2.undistort(corners, self.camera_mat, self.dist_coeffs)
         x = corners[0][1][0] - corners[0][0][0]
         y = corners[0][1][1] - corners[0][0][1]
         marker_length_pixels = np.sqrt(np.square(x) + np.square(y))
