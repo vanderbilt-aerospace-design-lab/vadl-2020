@@ -30,7 +30,6 @@ class Camera(object):
         return self.framerate
 
 
-
 ''' VideoStreamer Class
 
     This class is used to stream video from an arbitrary camera source. Once the source is defined, all the methods 

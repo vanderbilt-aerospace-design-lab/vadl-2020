@@ -10,9 +10,9 @@ parser.add_argument('-v','--video', default=0,
                     help="Play video instead of live stream.")
 parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
-parser.add_argument('-r','--resolution', default=480,
+parser.add_argument('-r','--resolution', type=int, default=480,
                     help="Camera resolution")
-parser.add_argument('-f','--fps', default=30,
+parser.add_argument('-f','--fps', type=int, default=30,
                     help="Camera frame rate")
 
 args = vars(parser.parse_args())
