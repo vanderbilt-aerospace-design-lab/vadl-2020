@@ -51,16 +51,15 @@ else:
     VIDEO_FILE_STREAM = 0
 
 def main():
+    print("Initializing")
     aruco_tracker = ArucoTracker(src=args["video"],
-                      use_pi=args["picamera"],
-                      debug=args["debug"],
-                      resolution=args["resolution"],
-                      framerate=args["fps"])
-    color_tracker = ColorMarkerTracker(src=args["video"],
-                      use_pi=args["picamera"],
-                      debug=args["debug"],
-                      resolution=args["resolution"],
-                      framerate=args["fps"])
+                                 use_pi=args["picamera"],
+                                 debug=args["debug"],
+                                 resolution=args["resolution"],
+                                 framerate=args["fps"],
+                                 video_dir=args["dir"],
+                                 video_file=args["name"])
+    print("Tracking")
     while True:
         aruco_tracker.track_marker()
 
