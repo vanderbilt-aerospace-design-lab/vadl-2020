@@ -1,6 +1,7 @@
 from camera import VideoStreamer, VideoWriter
 from utils import file_utils
 from abc import abstractmethod
+from math import pi
 import cv2
 import cv2.aruco as aruco
 import numpy as np
@@ -463,9 +464,15 @@ class ArucoTracker(MarkerTracker):
         pose = np.array([self.pose[0], -self.pose[1]])
 
         # Convert camera resolution from pixels to meters; reshape from dimensions (1,2) to (2,)
-        cam_dimensions = np.squeeze(np.array([self.resolution]) * self.scale_factor)
+        cam_dimensions = self.scale_camera_dimensions()
 
         return cam_dimensions / 2 - pose
+
+    def scale_camera_dimensions(self):
+        w = 2 * self.pose[2] * np.tan(72.5 * pi/180)
+        h = 2 * self.pose[2] * np.tan(38.5 * pi/180)
+        return np.array([w, h])
+
 
 
 
