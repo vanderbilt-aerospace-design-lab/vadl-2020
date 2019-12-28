@@ -84,6 +84,11 @@ class MarkerTracker(VideoStreamer):
     def set_pose(self, pose):
         self.pose = pose
 
+    def stop(self):
+        self.vs.stop()
+        if self.debug:
+            self.video_writer.stop()
+
     # This is where the marker tracking happens. Various image processing is performed, and if the marker is detected,
     # the pose will be updated and a boolean will be returned.
     @abstractmethod

@@ -135,5 +135,5 @@ class VideoWriter(Camera):
             time.sleep(wait_time)
 
     # Release the output when done (rarely needed - video is not corrupted if you use Ctrl-C or turn off your computer)
-    def release(self):
+    def stop(self):
         self.writer.release()
