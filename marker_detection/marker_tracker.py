@@ -7,8 +7,8 @@ import cv2.aruco as aruco
 import numpy as np
 import os
 
-CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
-# CALIBRATION_FILE = "camera_calibration/calibration_data/alex_laptop_camera.yaml"
+# CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
+CALIBRATION_FILE = "camera_calibration/calibration_data/alex_laptop_camera.yaml"
 
 ''' Marker Tracker Classes
 
@@ -396,8 +396,8 @@ class ArucoTracker(MarkerTracker):
 
         # If a marker is found, estimate the pose
         if ids is not None:
-            corners = corners[0]  # Corners are given clockwise starting at top left
-            self.rvec, self.pose = aruco.estimatePoseSingleMarkers(corners, self.marker_length,
+            marker_corner = corners[0]  # Corners are given clockwise starting at top left
+            self.rvec, self.pose = aruco.estimatePoseSingleMarkers(marker_corner, self.marker_length,
                                                                    self.camera_mat, self.dist_coeffs)
 
             # Reduce extra array dimensions
@@ -405,11 +405,12 @@ class ArucoTracker(MarkerTracker):
             self.pose = self.pose[0][0]
 
             # Calculate the scale factor conversion from marker length in pixels to meters
-            self.calculate_scale_factor(corners)
+            self.calculate_scale_factor(marker_corner)
 
             # Debug
             self.marker_found = True
             if self.get_debug():
+                aruco.drawDetectedMarkers(self.detected_frame,corners, ids)
                 self.detected_frame = aruco.drawAxis(self.cur_frame, self.camera_mat, self.dist_coeffs,
                                                      self.rvec, self.pose, 0.1)
                 self.visualize()
@@ -421,10 +422,28 @@ class ArucoTracker(MarkerTracker):
 
     # Visualize the Aruco marker detection. If on the Pi, only saves a video, since the GUI may not be available.
     def visualize(self):
+
         if not self.marker_found:
             self.detected_frame = self.cur_frame
         else:
+            # Put marker pose on image
+            str_position = "Marker Position (m) x=%2.2f y=%2.2f z=%2.2f"%(self.pose[0], self.pose[1], self.pose[2])
+            cv2.putText(self.detected_frame, str_position, (0, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0))
             print(self.pose)
+
+        # Draw UAV body axis for reference
+        cv2.line(self.detected_frame,
+                 pt1=(self.resolution[0] / 2, self.resolution[1] / 2),
+                 pt2=(100, self.resolution[1] / 2),
+                 color=(0, 0, 255),
+                 thickness=5)
+        cv2.putText(self.detected_frame,"X",(75, self.resolution[1] / 2 + 5), cv2.FONT_HERSHEY_SIMPLEX,0.5, (0, 0, 255))
+        cv2.line(self.detected_frame,
+                 pt1=(self.resolution[0] / 2, self.resolution[1] / 2),
+                 pt2=(self.resolution[0] / 2, 50),
+                 color=(0, 255, 0),
+                 thickness=5)
+        cv2.putText(self.detected_frame,"Y",(self.resolution[0] / 2 - 5, 35), cv2.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0))
 
         if not self.use_rpi:
             cv2.imshow("Aruco Tracker", self.detected_frame)
