@@ -75,11 +75,11 @@ def record_data(vehicle, pipe):
     rs_pose_file = open(RS_POSE_FILE + ".txt", "w")
 
     ''' Only for testing'''
-    dronekit_utils.arm(vehicle)
-    while not vehicle.armed:
-        print("Waiting for arming")
-        time.sleep(1)
-    dronekit_utils.takeoff(vehicle, 2)
+    # dronekit_utils.arm(vehicle)
+    # while not vehicle.armed:
+    #     print("Waiting for arming")
+    #     time.sleep(1)
+    # dronekit_utils.takeoff(vehicle, 2)
     ''''''
 
     print("Recording data...")
