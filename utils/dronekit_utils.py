@@ -55,6 +55,16 @@ def land(vehicle):
     print("Closing vehicle object")
     vehicle.close()
 
+def wait_for_home_location(vehicle):
+    # Wait for GPS to set home location
+    while not vehicle.home_location:
+        cmds = vehicle.commands
+        cmds.download()
+        cmds.wait_ready()
+        print("Waiting for home location")
+        time.sleep(0.5)
+
+
 def goto_position_target_local_offset_ned(vehicle, north, east, down):
     """
     Send SET_POSITION_TARGET_LOCAL_NED command to request the vehicle fly to a specified

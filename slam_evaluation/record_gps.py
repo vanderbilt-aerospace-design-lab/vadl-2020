@@ -54,76 +54,104 @@ def realsense_connect():
 
     return pipe
 
-def wait_for_home_location(vehicle):
-    # Wait for GPS to set home location
-    while not vehicle.home_location:
-        cmds = vehicle.commands
-        cmds.download()
-        cmds.wait_ready()
-        print("Waiting for home location")
-        time.sleep(0.5)
+def ned_to_body(location_ned, attitude):
+    roll_R = tf.rotation_matrix(attitude.roll, (1, 0, 0))[0:3, 0:3]
+    pitch_R = tf.rotation_matrix(attitude.pitch, (0, 1, 0))[0:3, 0:3]
+    yaw_R = tf.rotation_matrix(attitude.yaw, (0, 0, 1))[0:3, 0:3]
+    transform = np.matmul(np.matmul(roll_R, pitch_R), yaw_R)
 
-# TODO: Determine if the RPY of the RS ref. frame have to be rotated at all to be consistent with the UAV Compass RPY.
-# TODO: Make a separate script that calculates the rel. pose of the GPS location
-# TODO: Test this on the UAV
+    ned_mat = np.array([location_ned.north, location_ned.east, location_ned.down])
+
+    return np.matmul(ned_mat, transform)
+
+def rs_to_body(location_rs):
+    return np.array([location_rs[1], location_rs[0], -location_rs[2]])
+
 def record_data(vehicle, pipe):
-
-    # Set up RS stream and wait for frames
-    frames = pipe.wait_for_frames()
+    ct = 0
 
     # pose files to save to
     gps_pose_file = open(GPS_POSE_FILE + ".txt", "w")
     rs_pose_file = open(RS_POSE_FILE + ".txt", "w")
 
+    ''' Only for testing'''
+    dronekit_utils.arm(vehicle)
     while not vehicle.armed:
         print("Waiting for arming")
         time.sleep(1)
-        vehicle.armed = True
+    dronekit_utils.takeoff(vehicle, 2)
+    ''''''
 
     print("Recording data...")
     start_time = time.time()
     while vehicle.armed:
         frame_time = time.time()
+
+        # Wait for frames
+        frames = pipe.wait_for_frames()
+
         # Get pose frame
         data = frames.get_pose_frame()
-
         if data:
 
             # Pose data consists of translation and rotation
-            pose = data.get_pose_data()
+            rs_pose = data.get_pose_data()
 
-            # Retrieve global GPS coordinates w/ relative alt from vehicle
-            # Subtract the home location to obtain full relative coordinates
-            location_gps = vehicle.location.global_relative_frame
-            gps_pose_x = location_gps.lat - vehicle.home_location.lat
-            gps_pose_y = location_gps.lon - vehicle.home_location.lon
-            gps_pose_z = location_gps.alt
+            # Transform RS frame to body frame
+            rs_pose_body_frame = rs_to_body(np.array([rs_pose.translation.x,
+                                                      rs_pose.translation.y,
+                                                      rs_pose.translation.z]))
+
+            # Retrieve UAV location in local NED frame
+            gps_pose_ned = vehicle.location.local_frame
 
             # Get UAV attitude
             attitude = vehicle.attitude
+
+            # Transform NED frame to body frame using roll, pitch, yaw
+            gps_pose_body = ned_to_body(gps_pose_ned, attitude)
+
+            # Convert attitude to a quaternion
             uav_quat = tf.quaternion_from_euler(attitude.roll, attitude.pitch, attitude.yaw)
 
+            # Record time
             timestamp = time.time() - start_time
 
             # Write to files
             gps_pose_file.write(str(timestamp) + " " +
-                                str(gps_pose_x) + " " +
-                                str(gps_pose_y) + " " +
-                                str(gps_pose_z) + " " +
+                                str(gps_pose_body[0]) + " " +
+                                str(gps_pose_body[1]) + " " +
+                                str(gps_pose_body[2]) + " " +
                                 str(uav_quat[0]) + " " +
                                 str(uav_quat[1]) + " " +
                                 str(uav_quat[2]) + " " +
                                 str(uav_quat[3]) + "\n")
             rs_pose_file.write(str(timestamp) + " " +
-                               str(pose.translation.x) + " " +
-                               str(pose.translation.y) + " " +
-                               str(pose.translation.z) + " " +
-                               str(pose.rotation.w) + " " +
-                               str(pose.rotation.x) + " " +
-                               str(pose.rotation.y) + " " +
-                               str(pose.rotation.z) + "\n")
+                               str(rs_pose_body_frame[0]) + " " +
+                               str(rs_pose_body_frame[1]) + " " +
+                               str(rs_pose_body_frame[2]) + " " +
+                               str(rs_pose.rotation.w) + " " +
+                               str(rs_pose.rotation.x) + " " +
+                               str(rs_pose.rotation.y) + " " +
+                               str(rs_pose.rotation.z) + "\n")
 
+        # Sleep to preserve frequency
         time.sleep((1.0 / FREQ) - time.time() + frame_time)
+
+        '''Testing'''
+        # if ct == 0:
+        #     dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=2, right=0, down=0)
+        #     time.sleep(10)
+        # if ct==1:
+        #     dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=0, right=2, down=0)
+        #     time.sleep(10)
+        # if ct==2:
+        #     dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=0, right=0, down=2)
+        #     time.sleep(10)
+        # ct +=1
+        ''''''
+
+
 
 
 def main():
@@ -134,7 +162,7 @@ def main():
     pipe = realsense_connect()
 
     # wait for GPS to initialize home location
-    wait_for_home_location(vehicle)
+    dronekit_utils.wait_for_home_location(vehicle)
 
     # Record GPS and realsense data
     record_data(vehicle, pipe)
