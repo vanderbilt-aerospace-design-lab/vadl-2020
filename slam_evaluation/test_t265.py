@@ -13,6 +13,9 @@ os.environ["MAVLINK20"] = "1"
 # Import the libraries
 import pyrealsense2 as rs
 
+RS_POSE_FILE = "./slam_evaluation/data/rs_pose"
+
+
 def realsense_connect():
     print("Connecting to Realsense")
 
@@ -50,8 +53,11 @@ def rs_to_body(data):
 
 
 def test_rs(pipe):
+    rs_pose_file = open(RS_POSE_FILE + ".txt", "w")
+
 
     print("Recording data...")
+    start_time = time.time()
     while True:
 
         # Wait for frames
@@ -68,6 +74,17 @@ def test_rs(pipe):
             rs_pose_body_frame = rs_to_body(rs_pose)
 
             print(rs_pose_body_frame)
+
+            timestamp = time.time() - start_time
+
+            rs_pose_file.write(str(timestamp) + " " +
+                               str(rs_pose_body_frame[0]) + " " +
+                               str(rs_pose_body_frame[1]) + " " +
+                               str(rs_pose_body_frame[2]) + " " +
+                               str(rs_pose.rotation.w) + " " +
+                               str(rs_pose.rotation.x) + " " +
+                               str(rs_pose.rotation.y) + " " +
+                               str(rs_pose.rotation.z) + "\n")
 
 
 
