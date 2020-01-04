@@ -13,8 +13,6 @@ os.environ["MAVLINK20"] = "1"
 # Import the libraries
 import pyrealsense2 as rs
 
-FREQ = 30 # Hz
-
 def realsense_connect():
     print("Connecting to Realsense")
 
@@ -55,7 +53,6 @@ def test_rs(pipe):
 
     print("Recording data...")
     while True:
-        frame_time = time.time()
 
         # Wait for frames
         frames = pipe.wait_for_frames()
@@ -75,7 +72,7 @@ def test_rs(pipe):
 
 
         # Sleep to preserve frequency
-        time.sleep((1.0 / FREQ) - time.time() + frame_time)
+        time.sleep(.1)
 
 
 def main():
