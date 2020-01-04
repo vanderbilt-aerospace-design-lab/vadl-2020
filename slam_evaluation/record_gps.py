@@ -64,8 +64,24 @@ def ned_to_body(location_ned, attitude):
 
     return np.matmul(ned_mat, transform)
 
-def rs_to_body(location_rs):
-    return np.array([location_rs[1], location_rs[0], -location_rs[2]])
+def rs_to_body(data):
+
+    # Downward facing
+    H_T265body_aeroBody = np.array([[0,1,0,0],[1,0,0,0],[0,0,-1,0],[0,0,0,1]])
+
+    # Forward facing
+    #  H_aeroRef_T265Ref = np.array([[0, 0, -1, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
+    #  H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
+
+    rotation_euler = tf.euler_from_quaternion([data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z])
+    rot_mat_x = tf.rotation_matrix(rotation_euler[0], (1, 0, 0))
+    rot_mat_y = tf.rotation_matrix(rotation_euler[1], (0, 1, 0))
+    rot_mat_z = tf.rotation_matrix(rotation_euler[2], (0, 0, 1))
+    transform = np.matmul(np.matmul(rot_mat_x, rot_mat_y), rot_mat_z)
+
+    pose = np.array([data.translation.x, data.translation.y, data.translation.z, 1])
+    return np.matmul(np.matmul(pose, transform), H_T265body_aeroBody)
+
 
 def record_data(vehicle, pipe):
     ct = 0
@@ -76,11 +92,10 @@ def record_data(vehicle, pipe):
 
     ''' Only for testing'''
     # dronekit_utils.arm(vehicle)
-    # while not vehicle.armed:
-    #     print("Waiting for arming")
-    #     time.sleep(1)
+    while not vehicle.armed:
+        print("Waiting for arming")
+        time.sleep(1)
     # dronekit_utils.takeoff(vehicle, 2)
-    ''''''
 
     print("Recording data...")
     start_time = time.time()
@@ -98,9 +113,7 @@ def record_data(vehicle, pipe):
             rs_pose = data.get_pose_data()
 
             # Transform RS frame to body frame
-            rs_pose_body_frame = rs_to_body(np.array([rs_pose.translation.x,
-                                                      rs_pose.translation.y,
-                                                      rs_pose.translation.z]))
+            rs_pose_body_frame = rs_to_body(rs_pose)
 
             # Retrieve UAV location in local NED frame
             gps_pose_ned = vehicle.location.local_frame
@@ -149,7 +162,7 @@ def record_data(vehicle, pipe):
         #     dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=0, right=0, down=2)
         #     time.sleep(10)
         # ct +=1
-        ''''''
+
 
 
 
