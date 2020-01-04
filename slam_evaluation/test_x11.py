@@ -1,9 +1,10 @@
 import cv2
+from marker_detection.camera import VideoStreamer
 
 def main():
-    cap = cv2.VideoCapture(0)
+    vs = VideoStreamer(use_pi=1)
     while True:
-        ret, frame = cap.read()
+        frame = vs.read()
 
         # Display the resulting frame
         cv2.imshow('frame', frame)
