@@ -14,10 +14,13 @@ import dronekit
 from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal, LocationGlobal
 
 CONNECTION_STRING = "/dev/ttyAMA0"
+TARGET_ALTITUDE = 2 # Meters
+NED_POSITION = (0, -3, 0)
+AIRSPEED = 1
 
 # Connect to the Vehicle
-TARGET_ALTITUDE = 2 # Meters print('Connecting to vehicle on: %s' % CONNECTION_STRING)
-vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600) #if args.sitl:
+print('Connecting to vehicle on: %s' % CONNECTION_STRING)
+vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600)
 
 @vehicle.on_attribute('mode') 
 def decorated_mode_callback(self, attr_name, value):
@@ -147,10 +150,10 @@ def arm_and_takeoff(aTargetAltitude):
         time.sleep(1)
 
 def simple_goto():
-    print("Set default/target airspeed to 0.75 m/s")
-    vehicle.airspeed = 0.75
+    print("Set default/target airspeed to {} m/s".format(AIRSPEED))
+    vehicle.airspeed = AIRSPEED
 
-    goto_position_target_local_ned(4,4,0) #sleep so we can see the change in map
+    goto_position_target_local_ned(NED_POSITION) #sleep so we can see the change in map
     time.sleep(15)
  
 def rtl():
