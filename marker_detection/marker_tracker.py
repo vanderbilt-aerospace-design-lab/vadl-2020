@@ -396,7 +396,8 @@ class ArucoTracker(MarkerTracker):
     def track_marker(self, alt=0):
         # Find the marker
         self.cur_frame = self.read()
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(self.cur_frame, self.aruco_dict,
+        frame = cv2.undistort(self.cur_frame, self.camera_mat, self.dist_coeffs)
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, self.aruco_dict,
                                                               parameters=self.aruco_param)
 
         # If a marker is found, estimate the pose
