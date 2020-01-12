@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 # CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
-CALIBRATION_FILE = "camera_calibration/calibration_data/alex_laptop_camera.yaml"
+CALIBRATION_FILE = "camera_calibration/calibration_data/arducam_1_11.yaml"
 
 ''' Marker Tracker Classes
 
@@ -477,7 +477,7 @@ class ArucoTracker(MarkerTracker):
         if k == 27:  # wait for ESC key to exit
             cv2.destroyAllWindows()
         elif k == ord('s'):  # wait for 's' key to save and exit
-            cv2.imwrite('aruco_marker.png', marker_img)
+            cv2.imwrite('images/aruco_marker.png', marker_img)
             cv2.destroyAllWindows()
 
     def get_marker_rotation(self):
