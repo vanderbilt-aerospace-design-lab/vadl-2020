@@ -5,7 +5,7 @@ import numpy as np
 from dronekit import VehicleMode
 import time
 import transformations as tf
-from utils import dronekit_utils
+from utils import dronekit_utils, file_utils
 
 # Set MAVLink protocol to 2.
 os.environ["MAVLINK20"] = "1"
@@ -13,8 +13,12 @@ os.environ["MAVLINK20"] = "1"
 # Import the libraries
 import pyrealsense2 as rs
 
-GPS_POSE_FILE = "./slam_evaluation/data/gps_pose"
-RS_POSE_FILE = "./slam_evaluation/data/rs_pose"
+DATA_DIR = "./slam_evaluation/data"
+GPS_FILE_BASE = "gps_pose"
+RS_FILE_BASE = "rs_pose"
+GPS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR,GPS_FILE_BASE,"txt")
+RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
+
 FREQ = 30 # Hz
 
 #Set up option parsing to get connection string
@@ -23,7 +27,6 @@ parser.add_argument('--sitl',
                    help="Vehicle connection target string. If specified, SITL will be used.")
 
 args = vars(parser.parse_args())
-
 
 def connect_vehicle():
     # Start SITL if connection string specified
@@ -66,35 +69,36 @@ def ned_to_body(location_ned, attitude):
 
 def rs_to_body(data):
 
-    # Downward facing
-    H_T265body_aeroBody = np.array([[0,1,0,0],[1,0,0,0],[0,0,-1,0],[0,0,0,1]])
-
     # Forward facing
-    #  H_aeroRef_T265Ref = np.array([[0, 0, -1, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
-    #  H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
+    H_aeroRef_T265Ref = np.array([[0, 0, -1, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
+    H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
 
-    rotation_euler = tf.euler_from_quaternion([data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z])
-    rot_mat_x = tf.rotation_matrix(rotation_euler[0], (1, 0, 0))
-    rot_mat_y = tf.rotation_matrix(rotation_euler[1], (0, 1, 0))
-    rot_mat_z = tf.rotation_matrix(rotation_euler[2], (0, 0, 1))
-    transform = np.matmul(np.matmul(rot_mat_x, rot_mat_y), rot_mat_z)
-
+    # Original
     pose = np.array([data.translation.x, data.translation.y, data.translation.z, 1])
-    return np.matmul(np.matmul(pose, transform), H_T265body_aeroBody)
 
+    # Forward facing / 45 degrees
+    pose = np.matmul(pose, H_T265body_aeroBody)
+
+    return pose
 
 def record_data(vehicle, pipe):
     ct = 0
 
     # pose files to save to
-    gps_pose_file = open(GPS_POSE_FILE + ".txt", "w")
-    rs_pose_file = open(RS_POSE_FILE + ".txt", "w")
+    # gps_pose_file = open(GPS_POSE_FILE, "w")
+    # rs_pose_file = open(RS_POSE_FILE, "w")
+
+    gps_pose_file = file_utils.open_file(DATA_DIR, GPS_POSE_FILE)
+    rs_pose_file = file_utils.open_file(DATA_DIR, RS_POSE_FILE)
 
     ''' Only for testing'''
     # dronekit_utils.arm(vehicle)
+
     while not vehicle.armed:
         print("Waiting for arming")
         time.sleep(1)
+
+    ''' Only for testing'''
     # dronekit_utils.takeoff(vehicle, 2)
 
     print("Recording data...")
@@ -162,9 +166,6 @@ def record_data(vehicle, pipe):
         #     dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=0, right=0, down=2)
         #     time.sleep(10)
         # ct +=1
-
-
-
 
 
 def main():

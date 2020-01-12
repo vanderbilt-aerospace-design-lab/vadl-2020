@@ -1,11 +1,7 @@
 from __future__ import print_function
 import os
-import argparse
 import numpy as np
-from dronekit import VehicleMode
 import time
-import transformations as tf
-from utils import dronekit_utils
 
 # Set MAVLink protocol to 2.
 os.environ["MAVLINK20"] = "1"
@@ -35,26 +31,20 @@ def realsense_connect():
 
 def rs_to_body(data):
 
-    # Downward facing
-    H_T265body_aeroBody = np.array([[0,1,0,0],[1,0,0,0],[0,0,-1,0],[0,0,0,1]])
-
     # Forward facing
-    #  H_aeroRef_T265Ref = np.array([[0, 0, -1, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
-    #  H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
+    H_aeroRef_T265Ref = np.array([[0, 0, -1, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
+    H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
 
-    rotation_euler = tf.euler_from_quaternion([data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z])
-    rot_mat_x = tf.rotation_matrix(rotation_euler[0], (1, 0, 0))
-    rot_mat_y = tf.rotation_matrix(rotation_euler[1], (0, 1, 0))
-    rot_mat_z = tf.rotation_matrix(rotation_euler[2], (0, 0, 1))
-    transform = np.matmul(np.matmul(rot_mat_x, rot_mat_y), rot_mat_z)
-
+    # Original
     pose = np.array([data.translation.x, data.translation.y, data.translation.z, 1])
-    return np.matmul(np.matmul(pose, transform), H_T265body_aeroBody)
 
+    # Forward facing / 45 degrees
+    pose = np.matmul(pose, H_T265body_aeroBody)
+
+    return pose
 
 def test_rs(pipe):
     rs_pose_file = open(RS_POSE_FILE + ".txt", "w")
-
 
     print("Recording data...")
     start_time = time.time()
@@ -73,7 +63,10 @@ def test_rs(pipe):
             # Transform RS frame to body frame
             rs_pose_body_frame = rs_to_body(rs_pose)
 
-            print(rs_pose_body_frame)
+            print(str.format("x = {0:.3f}, y = {1:.3f}, z = {2:.3f}",
+                             rs_pose_body_frame[0],
+                             rs_pose_body_frame[1],
+                             rs_pose_body_frame[2]))
 
             timestamp = time.time() - start_time
 
