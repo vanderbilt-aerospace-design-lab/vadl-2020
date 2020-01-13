@@ -12,6 +12,17 @@ def connect_vehicle(connection_string):
     else:
         return connect(connection_string, wait_ready=True, baud=921600)
 
+def connect_vehicle_args(args):
+    # Start SITL if connection string specified
+    if args["sitl"]:
+        import dronekit_sitl
+        sitl = dronekit_sitl.start_default()
+        connection_string = sitl.connection_string()
+    else:
+        connection_string = "/dev/ttyAMA0"
+
+    # Connect to the Vehicle
+    return connect_vehicle(connection_string)
 
 def arm(vehicle):
     print("Basic pre-arm checks")
