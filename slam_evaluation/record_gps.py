@@ -28,18 +28,6 @@ parser.add_argument('--sitl',
 
 args = vars(parser.parse_args())
 
-def connect_vehicle():
-    # Start SITL if connection string specified
-    if args["sitl"]:
-        import dronekit_sitl
-        sitl = dronekit_sitl.start_default()
-        CONNECTION_STRING = sitl.connection_string()
-    else:
-        CONNECTION_STRING = "/dev/ttyAMA0"
-
-    # Connect to the Vehicle
-    return dronekit_utils.connect_vehicle(CONNECTION_STRING)
-
 def realsense_connect():
     print("Connecting to Realsense")
 
@@ -70,8 +58,10 @@ def ned_to_body(location_ned, attitude):
 def rs_to_body(data):
 
     # Forward facing
-    H_aeroRef_T265Ref = np.array([[0, 0, -1, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
-    H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
+    H_T265body_aeroBody = np.array([[-1, 0, 0, 0],
+                                    [0, 0, -1, 0],
+                                    [0, -1, 0, 0],
+                                    [0, 0, 0, 1]])
 
     # Original
     pose = np.array([data.translation.x, data.translation.y, data.translation.z, 1])
@@ -170,7 +160,7 @@ def record_data(vehicle, pipe):
 
 def main():
     # Connect to the Pixhawk
-    vehicle = connect_vehicle()
+    vehicle = dronekit_utils.connect_vehicle_args(args)
 
     # Connect to the realsense
     pipe = realsense_connect()

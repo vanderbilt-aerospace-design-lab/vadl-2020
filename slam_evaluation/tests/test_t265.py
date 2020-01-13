@@ -32,8 +32,10 @@ def realsense_connect():
 def rs_to_body(data):
 
     # Forward facing
-    H_aeroRef_T265Ref = np.array([[0, 0, -1, 0], [1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
-    H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
+    H_T265body_aeroBody = np.array([[-1, 0, 0, 0],
+                                    [0, 0, -1, 0],
+                                    [0, -1, 0, 0],
+                                    [0, 0, 0, 1]])
 
     # Original
     pose = np.array([data.translation.x, data.translation.y, data.translation.z, 1])
