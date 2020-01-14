@@ -22,6 +22,8 @@ if args["name"] is None:
 FILE = args["dir"] + NAME
 
 # Pick resolution
+if args["resolution"] == 2464:
+    args["resolution"] = (3280, 2464)
 if args["resolution"] == 1080:
     args["resolution"] = (1920, 1080)
 elif args["resolution"] == 720:
