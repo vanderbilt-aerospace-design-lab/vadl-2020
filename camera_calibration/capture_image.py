@@ -14,16 +14,12 @@ def main():
     ct = 0
     vs = VideoStreamer(use_pi=1)
     while True:
+        save = input("Enter a number")
         frame = vs.read()
 
-        if args["display"]:
-            cv2.imshow("Image", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        elif cv2.waitKey(1) & 0xFF == ord('s'):
-            cv2.imwrite(IMAGE_DIR + '/calib_image_{}.jpg'.format(ct), frame)
-            print("Saved image {}".format(ct))
-            ct += 1
+        cv2.imwrite(IMAGE_DIR + '/calib_image_{}.jpg'.format(ct), frame)
+        print("Saved image {}".format(ct))
+        ct += 1
 
     # When everything done, release the capture
     vs.stop()
