@@ -26,8 +26,10 @@ if args["resolution"] == 1944:
     args["resolution"] = (2592, 1944)
 if args["resolution"] == 1080:
     args["resolution"] = (1920, 1080)
-elif args["resolution"] == 720:
-    args["resolution"] = (1280, 720)
+elif args["resolution"] == 972:
+    args["resolution"] = (1296, 972)
+elif args["resolution"] == 730:
+    args["resolution"] = (1296, 730)
 elif args["resolution"] == 480:
     args["resolution"] = (640, 480)
 elif args["resolution"] == 240:
