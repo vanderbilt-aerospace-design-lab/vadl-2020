@@ -19,7 +19,7 @@ NAME = args["name"]
 if args["name"] is None:
     NAME = "image.jpg"
 
-FILE = args["dir"] + NAME
+FILE = args["dir"] + "/" + NAME
 
 # Pick resolution
 if args["resolution"] == 2464:
