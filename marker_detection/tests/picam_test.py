@@ -1,32 +1,47 @@
-from picamera.array import PiRGBArray
 from picamera import PiCamera
-import cv2
 import time
+import argparse
 
 IMAGE_DIR = "marker_detection/images"
 
+#Set up option parsing to get connection string
+parser = argparse.ArgumentParser(description='Test the VideoStreamer and VideoWriter classes')
+parser.add_argument('-r','--resolution', type=int, default=480,
+                    help="Camera resolution")
+parser.add_argument('-d','--dir', default=IMAGE_DIR,
+                    help="Directory to save file")
+parser.add_argument('-n','--name', default=None,
+                    help="File name")
+
+args = vars(parser.parse_args())
+
+NAME = args["name"]
+if args["name"] is None:
+    NAME = "image.jpg"
+
+FILE = args["dir"] + NAME
+
+# Pick resolution
+if args["resolution"] == 1080:
+    args["resolution"] = (1920, 1080)
+elif args["resolution"] == 720:
+    args["resolution"] = (1280, 720)
+elif args["resolution"] == 480:
+    args["resolution"] = (640, 480)
+elif args["resolution"] == 240:
+    args["resolution"] = (352, 240)
+elif args["resolution"] == 144:
+    args["resolution"] = (256, 144)
+else:
+    args["resolution"] = (64, 64)
+
 # Initialize the camera and grab a reference to the raw camera capture
 camera = PiCamera()
-camera.resolution = (1920, 1080)
-raw_capture = PiRGBArray(camera, size=(1920, 1080))
+camera.resolution = args["resolution"]
+camera.start_preview()
 
 # Allow the camera to warm up
-time.sleep(0.1)
+time.sleep(2)
 
-ct = 0
-# Read images from camera
-for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
-    # grab the raw NumPy array representing the image, then initialize the timestamp
-    # and occupied/unoccupied text
-    img = frame.array
-
-    # Clear the stream in preparation for the next frame
-    raw_capture.truncate(0)
-
-    # Save an image every X time interval
-    cv2.imwrite(IMAGE_DIR + '/marker_test_{}.jpg'.format(ct), img)
-    print("Saved image {}".format(ct))
-    ct += 1
-    time.sleep(1)
-    if ct > 0:
-        break
+# Capture image and save to file
+camera.capture(FILE)
