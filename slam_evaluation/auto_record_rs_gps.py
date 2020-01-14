@@ -75,9 +75,6 @@ def record_data(vehicle, pipe):
     ct = 0
 
     # pose files to save to
-    # gps_pose_file = open(GPS_POSE_FILE, "w")
-    # rs_pose_file = open(RS_POSE_FILE, "w")
-
     gps_pose_file = file_utils.open_file(DATA_DIR, GPS_POSE_FILE)
     rs_pose_file = file_utils.open_file(DATA_DIR, RS_POSE_FILE)
 
