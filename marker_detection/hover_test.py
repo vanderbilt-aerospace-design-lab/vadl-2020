@@ -95,7 +95,8 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
             marker_pose_aruco_ref = marker_tracker.get_pose()
 
             '''Aruco Marker'''
-            marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
+            # marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
+            marker_pose_body_ref = marker_pose_aruco_ref
             print(marker_pose_body_ref)
 
             # command_right = pid(marker_pose_body_ref[0])
