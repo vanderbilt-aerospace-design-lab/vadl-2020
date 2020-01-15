@@ -68,22 +68,10 @@ if not isinstance(args["video"], int):
 else:
     VIDEO_FILE_STREAM = 0
 
-def connect_vehicle():
-    #Start SITL if connection string specified
-    if args["sitl"]:
-        import dronekit_sitl
-        sitl = dronekit_sitl.start_default()
-        CONNECTION_STRING = sitl.connection_string()
-    else:
-        CONNECTION_STRING = "/dev/ttyAMA0"
-
-    # Connect to the Vehicle
-    return dronekit_utils.connect_vehicle(CONNECTION_STRING)
-
 def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
-    pid = PID(1, 0.1, 0.05, setpoint=0)
-    pid.sample_time = 0.01
+    # pid = PID(1, 0.1, 0.05, setpoint=0)
+    # pid.sample_time = 0.01
 
     if args["debug"]:
         # Open text file to store UAV position
@@ -105,16 +93,16 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
             '''Aruco Marker'''
             marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
-            # print(marker_pose_body_ref)
+            print(marker_pose_body_ref)
 
-            command_right = pid(marker_pose_body_ref[0])
-            command_forward = pid(marker_pose_body_ref[1])
+            # command_right = pid(marker_pose_body_ref[0])
+            # command_forward = pid(marker_pose_body_ref[1])
 
             # Send position command to the vehicle
-            dronekit_utils.goto_position_target_body_offset_ned(vehicle,
-                                                                forward=command_forward,
-                                                                right=command_right,
-                                                                down=0)
+            # dronekit_utils.goto_position_target_body_offset_ned(vehicle,
+            #                                                     forward=command_forward,
+            #                                                     right=command_right,
+            #                                                     down=0)
 
             if args["debug"]:
                 # print("Sending: {}, {}".format(command_right, command_forward))
@@ -148,7 +136,7 @@ def main():
                                  video_file=args["name"])
 
     # Connect to the Pixhawk
-    vehicle = connect_vehicle()
+    vehicle = dronekit_utils.connect_vehicle_args(args)
 
     # Arm the UAV
     dronekit_utils.arm(vehicle)
