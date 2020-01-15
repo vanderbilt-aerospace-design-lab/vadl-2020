@@ -4,8 +4,8 @@ import numpy as np
 import yaml
 import glob
 
-SAVE_PATH = "calibration_parameters/arducam.yaml"
-CHECKERBOARD = (7,9)
+SAVE_PATH = "calibration_parameters/arducam.yaml" # Path to save calibration parameters
+CHECKERBOARD = (7,9) # Checkerboard pattern
 
 subpix_criteria = (cv2.TERM_CRITERIA_EPS+cv2.TERM_CRITERIA_MAX_ITER, 30, 0.1)
 calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC+cv2.fisheye.CALIB_CHECK_COND+cv2.fisheye.CALIB_FIX_SKEW
@@ -17,6 +17,7 @@ _img_shape = None
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
 
+# Retrieve calibration images; enter name of directory
 images = glob.glob('calibration_images_arducam_filtered/*.jpg')
 
 for fname in images:
