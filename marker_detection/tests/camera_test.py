@@ -2,6 +2,8 @@ from marker_detection.camera import VideoStreamer, VideoWriter
 import argparse
 import os
 import time
+import cv2
+import numpy as np
 
 VIDEO_DIR = "marker_detection/videos"
 
@@ -49,27 +51,27 @@ def main():
                        resolution=args["resolution"],
                        framerate=args["fps"])
 
-    # ''' Test VideoStreamer'''
-    # print("Capturing images...")
-    # for i in range(0, 50):
-    #     frame = vs.read()
-    #     if args["picamera"] < 1:
-    #         cv2.imshow("Image", frame)
-    #         if cv2.waitKey(1) & 0xFF == ord('q'):
-    #             cv2.destroyAllWindows()
-    #     print(np.shape(frame))
+    ''' Test VideoStreamer'''
+    print("Capturing images...")
+    for i in range(0, 50):
+        frame = vs.read()
+        if args["picamera"] < 1:
+            cv2.imshow("Image", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+        print(np.shape(frame))
 
-    ''' Test VideoWriter'''
-    vw = VideoWriter(video_dir=args["dir"],
-                     video_file=args["name"],
-                     resolution=args["resolution"],
-                     framerate=args["fps"])
-    start = time.time()
-    while (time.time() - start) < 3:
-        vw.write(vs.read())
+    # ''' Test VideoWriter'''
+    # vw = VideoWriter(video_dir=args["dir"],
+    #                  video_file=args["name"],
+    #                  resolution=args["resolution"],
+    #                  framerate=args["fps"])
+    # start = time.time()
+    # while (time.time() - start) < 3:
+    #     vw.write(vs.read())
 
     vs.stop()
-    vw.release()
+    # vw.release()
 
 if __name__ == "__main__":
     main()

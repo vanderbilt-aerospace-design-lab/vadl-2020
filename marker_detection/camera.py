@@ -18,9 +18,10 @@ class Camera(object):
                  use_pi=-1,
                  resolution=(640, 480),
                  framerate=30):
-        self.resolution = resolution
+        self.resolution = None
+        self.set_resolution(resolution)
         self.framerate = framerate
-        self.use_rpi = 1 if use_pi > 0 else 0
+        self.use_pi = 1 if use_pi > 0 else 0
 
 
     def get_resolution(self):
@@ -28,6 +29,26 @@ class Camera(object):
 
     def get_framerate(self):
         return self.framerate
+
+    # Sets the resolution based off the single number passed in. Convention is to pass in the Height of the desired
+    # resolution
+    def set_resolution(self,resolution):
+        if resolution == 1944:
+            self.resolution = (2592, 1944)
+        if resolution == 1080:
+            self.resolution = (1920, 1080)
+        elif resolution == 972:
+            self.resolution = (1296, 972)
+        elif resolution == 730:
+            self.resolution = (1296, 730)
+        elif resolution == 480:
+            self.resolution = (640, 480)
+        elif resolution == 240:
+            self.resolution = (352, 240)
+        elif resolution == 144:
+            self.resolution = (256, 144)
+        else:
+            self.resolution = (64, 64)
 
 
 ''' VideoStreamer Class
@@ -54,7 +75,7 @@ class VideoStreamer(Camera):
     def __init__(self,
                  src=0,
                  use_pi=-1,
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30):
 
         super(VideoStreamer, self).__init__(use_pi=use_pi,
@@ -65,9 +86,9 @@ class VideoStreamer(Camera):
         # FileVideoStream class is used for streaming from a saved video.
         if isinstance(src, int):
             self.vs = VideoStream(src=src,
-                                  usePiCamera=use_pi > 0,
-                                  resolution=resolution,
-                                  framerate=framerate).start()
+                                  usePiCamera=self.use_pi > 0,
+                                  resolution=self.resolution,
+                                  framerate=self.framerate).start()
         else:
             self.vs = FileVideoStream(path=src)
 
@@ -96,7 +117,7 @@ class VideoWriter(Camera):
                  video_dir=VIDEO_DIR,
                  video_file=None,
                  ext=".avi",
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30):
 
         super(VideoWriter, self).__init__(resolution=resolution,
@@ -112,7 +133,8 @@ class VideoWriter(Camera):
 
         # Codec encoding. You shouldn't have to mess with this, and it is highly recommended you don't!
         self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        self.writer = cv2.VideoWriter(self.video_dir + "/" + self.video_file + self.ext, self.fourcc, framerate, resolution, True)
+        self.writer = cv2.VideoWriter(self.video_dir + "/" + self.video_file + self.ext, self.fourcc,
+                                      self.framerate, self.resolution, True)
 
         self.frame_start = 0
 

@@ -24,8 +24,13 @@ def create_file_name_chronological(data_dir, file_base, ext):
 
     return data_dir + "/" + file_base + "_{}.".format(ct) + ext
 
-def open_file(dir, file):
-    if not os.path.exists(dir):
-        os.mkdir(dir)
-
+# Opens a file for writing to it.
+def open_file(file):
     return open(file, "w")
+
+# Recursively make directories. Do nothing if they already exist.
+def make_dir(dir):
+    try:
+        os.makedirs(dir)
+    except OSError:
+        pass

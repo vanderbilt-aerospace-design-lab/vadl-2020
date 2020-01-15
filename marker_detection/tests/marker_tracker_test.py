@@ -15,9 +15,12 @@ parser.add_argument('-r','--resolution', type=int, default=480,
 parser.add_argument('-f','--fps', type=int, default=30,
                     help="Camera frame rate")
 parser.add_argument('--dir', default=None,
-                    help="Directory to save file")
+                    help="Directory to save file. Defaults to marker_detection/videos")
 parser.add_argument('-n','--name', default=None,
-                    help="File name")
+                    help="File name. If none specified, defaults to the current date.")
+parser.add_argument('--pose_file', default=None,
+                    help="Pose file name for debugging. Do not input directory, "
+                         "just the file name w/ or w/o .txt at the end. If none specified, defaults to the current date.")
 
 args = vars(parser.parse_args())
 
@@ -27,21 +30,6 @@ if not isinstance(args["video"], int):
     VIDEO_FILE_STREAM = args["video"]
 else:
     VIDEO_FILE_STREAM = 0
-
-# Pick resolution
-if args["resolution"] == 1080:
-    args["resolution"] = (1920, 1080)
-elif args["resolution"] == 720:
-    args["resolution"] = (1280, 720)
-elif args["resolution"] == 480:
-    args["resolution"] = (640, 480)
-elif args["resolution"] == 240:
-    args["resolution"] = (352, 240)
-elif args["resolution"] == 144:
-    args["resolution"] = (256, 144)
-else:
-    args["resolution"] = (64, 64)
-
 
 if not isinstance(args["video"], int):
     if not os.path.exists(args["video"]):
@@ -58,7 +46,8 @@ def main():
                                  resolution=args["resolution"],
                                  framerate=args["fps"],
                                  video_dir=args["dir"],
-                                 video_file=args["name"])
+                                 video_file=args["name"],
+                                 pose_file=args["pose_file"])
     print("Tracking")
     while True:
         aruco_tracker.track_marker()
