@@ -117,9 +117,9 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
 def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
     # Forward facing
-    aruco_to_body_transform = np.array([[-1, 0, 0, 0],
-                                        [0, -1, 0, 0],
-                                        [0, 0, -1, 0],
+    aruco_to_body_transform = np.array([[1, 0, 0, 0],
+                                        [0, 1, 0, 0],
+                                        [0, 0, 1, 0],
                                         [0, 0, 0, 1]])
 
     # Original
