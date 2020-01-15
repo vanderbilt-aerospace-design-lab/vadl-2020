@@ -8,8 +8,9 @@ import argparse
 import numpy as np
 from simple_pid import PID
 import os
+import time
 from utils import dronekit_utils, file_utils
-from marker_tracker import ArucoTracker
+from marker_detection.marker_tracker import ArucoTracker
 
 TARGET_ALTITUDE = 2 # Meters
 
@@ -74,7 +75,17 @@ if not isinstance(args["video"], int):
 else:
     VIDEO_FILE_STREAM = 0
 
-def marker_hover(vehicle, marker_tracker=ArucoTracker()):
+def ned_to_body(location_ned, attitude):
+    roll_R = tf.rotation_matrix(attitude.roll, (1, 0, 0))[0:3, 0:3]
+    pitch_R = tf.rotation_matrix(attitude.pitch, (0, 1, 0))[0:3, 0:3]
+    yaw_R = tf.rotation_matrix(attitude.yaw, (0, 0, 1))[0:3, 0:3]
+    transform = np.matmul(np.matmul(roll_R, pitch_R), yaw_R)
+
+    ned_mat = np.array([location_ned.north, location_ned.east, location_ned.down])
+
+    return np.matmul(ned_mat, transform)
+
+def marker_hover(vehicle, marker_tracker):
 
     pid = PID(1, 0.1, 0.05, setpoint=0)
     pid.sample_time = 0.01
@@ -98,8 +109,10 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
             '''Aruco Marker'''
             marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
 
-            # command_right = pid(marker_pose_body_ref[0])
-            # command_forward = pid(marker_pose_body_ref[1])
+            # command_forward = pid(marker_pose_body_ref[0])
+            # command_right = pid(marker_pose_body_ref[1])
+            command_forward = marker_pose_body_ref[0]
+            command_right = marker_pose_body_ref[1]
 
             print(marker_pose_body_ref)
 
@@ -108,16 +121,17 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
                                                                 forward=command_forward,
                                                                 right=command_right,
                                                                 down=0)
+            print(vehicle.location.local_frame)
             # Mess w/ this during test
             time.sleep(0.5)
 
             if args["debug"]:
                 # print("Sending: {}, {}".format(command_right, command_forward))
-                pose_file.write("{} {}\n".format(marker_pose_body_ref[0], marker_pose_body_ref[1], marker_pose_body_ref[2]))
+                pose_file.write("{} {} {}\n".format(marker_pose_body_ref[0], marker_pose_body_ref[1], marker_pose_body_ref[2]))
                 # pid_file.write("{} {}\n".format(command_forward, command_right))
         else:
             if args["debug"]:
-                pose_file.write("{} {}\n".format("N/A", "N/A"))
+                pose_file.write("{} {} {}\n".format("N/A", "N/A", "N/A"))
                 # pid_file.write("{} {}\n".format("N/A", "N/A"))
 
 def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
