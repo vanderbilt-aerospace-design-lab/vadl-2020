@@ -3,6 +3,13 @@ import sys
 import numpy as np
 from utils import file_utils
 
+DIR = "camera_calibration/undistorted_images"
+FILE_BASE = "undistorted_image"
+FILE_BASE_COMPARISON = "undistorted_image_comparison"
+EXT = "jpg"
+FILE_NAME = file_utils.create_file_name_chronological(DIR, FILE_BASE, EXT)
+FILE_NAME_COMPARISON = file_utils.create_file_name_chronological(DIR, FILE_BASE_COMPARISON, EXT)
+
 K, D = file_utils.load_yaml("camera_calibration/calibration_parameters/arducam.yaml")
 DIM = (640, 480)
 
@@ -19,8 +26,11 @@ def undistort(img_path):
     cv2.destroyAllWindows()
 
     # Save image
-    cv2.imwrite()
+    cv2.imwrite(FILE_NAME, undistorted_img)
 
+    # Save image comparison
+    concat_img = np.concatenate((img, undistorted_img), axis=1)
+    cv2.imwrite(FILE_NAME_COMPARISON, concat_img)
 
 if __name__ == '__main__':
     for p in sys.argv[1:]:
