@@ -395,7 +395,6 @@ class ArucoTracker(MarkerTracker):
     def track_marker(self, alt=0):
         # Update current image
         self.cur_frame = self.read()
-
         # Detect the marker
         corners, ids, rejectedImgPoints = aruco.detectMarkers(self.cur_frame, self.aruco_dict,
                                                               parameters=self.aruco_param)
@@ -416,7 +415,9 @@ class ArucoTracker(MarkerTracker):
             # Debug
             self.marker_found = True
             if self.get_debug():
-                aruco.drawDetectedMarkers(self.detected_frame,corners, ids)
+                if self.detected_frame is None:
+                    self.detected_frame = self.cur_frame
+                aruco.drawDetectedMarkers(self.detected_frame, corners, ids)
                 self.detected_frame = aruco.drawAxis(self.cur_frame, self.camera_mat, self.dist_coeffs,
                                                      self.rvec, self.pose, 0.1)
                 self.visualize()
