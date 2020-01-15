@@ -73,8 +73,8 @@ else:
 
 def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
-    # pid = PID(1, 0.1, 0.05, setpoint=0)
-    # pid.sample_time = 0.01
+    pid = PID(1, 0.1, 0.05, setpoint=0)
+    pid.sample_time = 0.01
 
     if args["debug"]:
         # Open text file to store UAV position
@@ -96,11 +96,10 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
             '''Aruco Marker'''
             marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
-            print(marker_pose_body_ref)
 
-            # command_right = pid(marker_pose_body_ref[0])
-            # command_forward = pid(marker_pose_body_ref[1])
-
+            command_right = pid(marker_pose_body_ref[0])
+            command_forward = pid(marker_pose_body_ref[1])
+            print(command_right, command_forward)
             # Send position command to the vehicle
             # dronekit_utils.goto_position_target_body_offset_ned(vehicle,
             #                                                     forward=command_forward,
@@ -128,18 +127,7 @@ def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
 
     body_pose = np.matmul(aruco_pose, aruco_to_body_transform)
 
-    return body_pose
-
-    # Flip signs because aruco has bottom right and down as positive axis
-    aruco_pose = -aruco_pose
-
-    # Remove z-component
-    aruco_pose = np.delete(aruco_pose, 2, 0)
-
-    # Convert camera resolution from pixels to meters; reshape from dimensions (1,2) to (2,)
-    cam_dimensions = np.squeeze(np.array([marker_tracker.get_resolution()]) * marker_tracker.get_scale_factor())
-
-    return cam_dimensions / 2 - aruco_pose
+    return np.array([body_pose[0], body_pose[1], body_pose[2]])
 
 def main():
     # Create Marker Detector; before UAV takes off because takes a while to process
