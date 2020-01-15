@@ -15,7 +15,7 @@ from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationLocal
 
 CONNECTION_STRING = "/dev/ttyAMA0"
 TARGET_ALTITUDE = 2 # Meters
-NED_POSITION = (0, -3, 0)
+NED_POSITION = (3, 0, 0)
 AIRSPEED = 1
 
 # Connect to the Vehicle

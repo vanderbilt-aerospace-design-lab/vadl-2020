@@ -26,18 +26,18 @@ else:
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
 vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600)
 
-# Vehicle callback to enable manual override
-@vehicle.on_attribute('mode')
-def decorated_mode_callback(self, attr_name, value):
-    # `attr_name` is the observed attribute (used if callback is used for multiple attributes)
-    # `attr_name` - the observed attribute (used if callback is used for multiple attributes)
-    # `value` is the updated attribute value.
-    print(" CALLBACK: Mode changed to", value)
-
-    # Close vehicle object before exiting script
-    print("Closing vehicle object")
-    vehicle.close()
-    exit(0)
+# # Vehicle callback to enable manual override
+# @vehicle.on_attribute('mode')
+# def decorated_mode_callback(self, attr_name, value):
+#     # `attr_name` is the observed attribute (used if callback is used for multiple attributes)
+#     # `attr_name` - the observed attribute (used if callback is used for multiple attributes)
+#     # `value` is the updated attribute value.
+#     print(" CALLBACK: Mode changed to", value)
+#
+#     # Close vehicle object before exiting script
+#     print("Closing vehicle object")
+#     vehicle.close()
+#     exit(0)
 
 
 def arm_and_takeoff(aTargetAltitude):
