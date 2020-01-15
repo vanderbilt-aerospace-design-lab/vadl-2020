@@ -14,9 +14,12 @@ from marker_tracker import ArucoTracker
 TARGET_ALTITUDE = 2 # Meters
 
 # Files relative to project directory
-VIDEO_FILE_SAVE = "marker_detection/videos" + file_utils.create_file_name_date() + ".mp4"
-POSE_FILE = "marker_detection/pose_data/" + file_utils.create_file_name_date() + ".txt"
-PID_FILE = "marker_detection/pid_data/" + file_utils.create_file_name_date() + ".txt"
+VIDEO_FILE_DIR = "marker_detection/videos"
+POSE_DIR = "marker_detection/pose_data/"
+PID_DIR = "marker_detection/pid_data/"
+VIDEO_FILE_SAVE = VIDEO_FILE_DIR + file_utils.create_file_name_date() + ".mp4"
+POSE_FILE = POSE_DIR + file_utils.create_file_name_date() + ".txt"
+PID_FILE = PID_DIR + file_utils.create_file_name_date() + ".txt"
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
@@ -78,8 +81,8 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
     if args["debug"]:
         # Open text file to store UAV position
-        pose_file = open(POSE_FILE, "w")
-        pid_file = open(PID_FILE, "w")
+        pose_file = file_utils.open_file(POSE_DIR, POSE_FILE)
+        pid_file = file_utils.open_file(PID_DIR, PID_FILE)
 
     # Hover until manual override
     print("Tracking marker...")
