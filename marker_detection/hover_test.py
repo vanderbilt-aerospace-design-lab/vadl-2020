@@ -47,10 +47,14 @@ else:
     VIDEO_FILE_STREAM = 0
 
 # Pick resolution
+if args["resolution"] == 1944:
+    args["resolution"] = (2592, 1944)
 if args["resolution"] == 1080:
     args["resolution"] = (1920, 1080)
-elif args["resolution"] == 720:
-    args["resolution"] = (1280, 720)
+elif args["resolution"] == 972:
+    args["resolution"] = (1296, 972)
+elif args["resolution"] == 730:
+    args["resolution"] = (1296, 730)
 elif args["resolution"] == 480:
     args["resolution"] = (640, 480)
 elif args["resolution"] == 240:
@@ -59,7 +63,6 @@ elif args["resolution"] == 144:
     args["resolution"] = (256, 144)
 else:
     args["resolution"] = (64, 64)
-args = vars(parser.parse_args())
 
 if not isinstance(args["video"], int):
     if not os.path.exists(args["video"]):
@@ -80,8 +83,8 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
     # Hover until manual override
     print("Tracking marker...")
-    while vehicle.mode == VehicleMode("GUIDED"):
-
+    # while vehicle.mode == VehicleMode("GUIDED"):
+    while True:
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
 
@@ -136,13 +139,13 @@ def main():
                                  video_file=args["name"])
 
     # Connect to the Pixhawk
-    vehicle = dronekit_utils.connect_vehicle_args(args)
-
+    #vehicle = dronekit_utils.connect_vehicle_args(args)
+    vehicle = True
     # Arm the UAV
-    dronekit_utils.arm(vehicle)
+    #dronekit_utils.arm(vehicle)
 
     # Takeoff and fly to a target altitude
-    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    #dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
 
     # Maintain hover over a marker
     marker_hover(vehicle, marker_tracker)
