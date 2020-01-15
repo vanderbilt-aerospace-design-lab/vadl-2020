@@ -393,10 +393,11 @@ class ArucoTracker(MarkerTracker):
     # The Aruco marker is tracked here. The pose is saved if the marker is found.
     # Returns True if found, else False.
     def track_marker(self, alt=0):
-        # Find the marker
+        # Update current image
         self.cur_frame = self.read()
-        frame = cv2.undistort(self.cur_frame, self.camera_mat, self.dist_coeffs)
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, self.aruco_dict,
+
+        # Detect the marker
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(self.cur_frame, self.aruco_dict,
                                                               parameters=self.aruco_param)
 
         # If a marker is found, estimate the pose
