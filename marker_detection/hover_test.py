@@ -97,9 +97,9 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
             '''Aruco Marker'''
             marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
 
-            command_right = pid(marker_pose_body_ref[0])
-            command_forward = pid(marker_pose_body_ref[1])
-            print(command_right, command_forward)
+            # command_right = pid(marker_pose_body_ref[0])
+            # command_forward = pid(marker_pose_body_ref[1])
+            print(marker_pose_body_ref)
             # Send position command to the vehicle
             # dronekit_utils.goto_position_target_body_offset_ned(vehicle,
             #                                                     forward=command_forward,
