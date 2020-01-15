@@ -8,15 +8,15 @@ import argparse
 import numpy as np
 from simple_pid import PID
 import os
-from utils import dronekit_utils
+from utils import dronekit_utils, file_utils
 from marker_tracker import ArucoTracker
 
 TARGET_ALTITUDE = 2 # Meters
 
 # Files relative to project directory
-VIDEO_FILE_SAVE = 'marker_detection/videos/marker_hover_1.mp4'
-POSE_FILE = "marker_detection/pose_data/marker_pose_0.txt"
-PID_FILE = "marker_detection/pid_data/pid_0.txt"
+VIDEO_FILE_SAVE = "marker_detection/videos" + file_utils.create_file_name_date() + ".mp4"
+POSE_FILE = "marker_detection/pose_data/" + file_utils.create_file_name_date() + ".txt"
+PID_FILE = "marker_detection/pid_data/" + file_utils.create_file_name_date() + ".txt"
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
@@ -110,12 +110,12 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
             if args["debug"]:
                 # print("Sending: {}, {}".format(command_right, command_forward))
-                pose_file.write("{} {}\n".format(marker_pose_body_ref[0], marker_pose_body_ref[1]))
-                pid_file.write("{} {}\n".format(command_forward, command_right))
+                pose_file.write("{} {}\n".format(marker_pose_body_ref[0], marker_pose_body_ref[1], marker_pose_body_ref[2]))
+                # pid_file.write("{} {}\n".format(command_forward, command_right))
         else:
             if args["debug"]:
                 pose_file.write("{} {}\n".format("N/A", "N/A"))
-                pid_file.write("{} {}\n".format("N/A", "N/A"))
+                # pid_file.write("{} {}\n".format("N/A", "N/A"))
 
 def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
     # Forward facing
