@@ -86,8 +86,8 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
     # while vehicle.mode == VehicleMode("GUIDED"):
     while True:
         # Track marker
-        marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
-
+        # marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
+        marker_tracker.track_marker()
         # print("Vehicle: {}, {}".format(vehicle.location.local_frame.north, vehicle.location.local_frame.east))
         if marker_tracker.is_marker_found():
 
