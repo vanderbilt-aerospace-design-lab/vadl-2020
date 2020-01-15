@@ -32,6 +32,9 @@ def arm(vehicle):
         print(" Waiting for vehicle to initialise...")
         time.sleep(1)
 
+    # Do not arm until EKF has found its home location
+    wait_for_home_location(vehicle)
+
     print("Arming motors")
     # Copter should arm in GUIDED mode
     vehicle.mode = VehicleMode("GUIDED")

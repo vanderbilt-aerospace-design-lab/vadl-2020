@@ -4,6 +4,8 @@ from imutils.video import FileVideoStream
 import cv2
 import datetime
 import time
+import numpy as np
+import pyrealsense2 as rs
 
 # specify as relative or absolute
 VIDEO_DIR = "marker_detection/videos"
@@ -159,3 +161,71 @@ class VideoWriter(Camera):
     # Release the output when done (rarely needed - video is not corrupted if you use Ctrl-C or turn off your computer)
     def stop(self):
         self.writer.release()
+
+# TODO: Figure out behavior when tracking fails
+class Realsense(Camera):
+    def __init__(self):
+        super(Realsense, self).__init__()
+
+        self.pipe = self.connect()
+        self.data = None
+        self.pose_object = None
+        self.pose = None
+        self.quaternion = None
+
+
+    def connect(self):
+        print("Connecting to Realsense")
+
+        # Declare RealSense pipeline, encapsulating the actual device and sensors
+        pipe = rs.pipeline()
+
+        # Build config object before requesting data
+        cfg = rs.config()
+
+        # Enable the stream we are interested in
+        cfg.enable_stream(rs.stream.pose)  # Positional data
+
+        # Start streaming with requested config
+        pipe.start(cfg)
+
+        return pipe
+
+    # Returns the pose as a np array
+    # Currently returns pose since this is most frequently needed value
+    # May change to be more versatile at a later point
+    def read(self):
+        # Wait for frames
+        frames = self.pipe.wait_for_frames()
+
+        # Get pose frame
+        self.data = frames.get_pose_frame()
+
+        if self.is_tracking():
+
+            # Pose data consists of translation and rotation
+            self.pose_object = self.data.get_pose_data()
+
+            self.pose = np.array([self.pose_object.translation.x,
+                                  self.pose_object.translation.y,
+                                  self.pose_object.translation.z])
+
+            self.quaternion = np.array([self.pose_object.rotation.w,
+                                        self.pose_object.rotation.x,
+                                        self.pose_object.rotation.y,
+                                        self.pose_object.rotation.z])
+            return self.pose
+
+    def is_tracking(self):
+        return self.data
+
+    def get_pose(self):
+        return self.pose
+
+    def get_quaternion(self):
+        return self.quaternion
+
+    # Terminate the capture thread.
+    def stop(self):
+        self.pipe.stop()
+
