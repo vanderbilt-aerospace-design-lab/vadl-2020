@@ -8,7 +8,6 @@ import argparse
 import numpy as np
 from simple_pid import PID
 import os
-
 from utils import dronekit_utils
 from marker_tracker import ArucoTracker
 
@@ -28,8 +27,38 @@ parser.add_argument('-v','--video', default=0,
 parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
 parser.add_argument('-d',"--debug", default=0,
-                   help="Vehicle connection target string. If specified, SITL will be used.")
+                   help="Whether or not videos should be saved and print statements should be used.")
+parser.add_argument('-r','--resolution', type=int, default=480,
+                    help="Camera resolution")
+parser.add_argument('-f','--fps', type=int, default=30,
+                    help="Camera frame rate")
+parser.add_argument('--dir', default=None,
+                    help="Directory to save file")
+parser.add_argument('-n','--name', default=None,
+                    help="File name")
 
+args = vars(parser.parse_args())
+
+if not isinstance(args["video"], int):
+    if not os.path.exists(args["video"]):
+        raise Exception("ERROR: Video file does not exist")
+    VIDEO_FILE_STREAM = args["video"]
+else:
+    VIDEO_FILE_STREAM = 0
+
+# Pick resolution
+if args["resolution"] == 1080:
+    args["resolution"] = (1920, 1080)
+elif args["resolution"] == 720:
+    args["resolution"] = (1280, 720)
+elif args["resolution"] == 480:
+    args["resolution"] = (640, 480)
+elif args["resolution"] == 240:
+    args["resolution"] = (352, 240)
+elif args["resolution"] == 144:
+    args["resolution"] = (256, 144)
+else:
+    args["resolution"] = (64, 64)
 args = vars(parser.parse_args())
 
 if not isinstance(args["video"], int):
@@ -56,7 +85,7 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
     pid = PID(1, 0.1, 0.05, setpoint=0)
     pid.sample_time = 0.01
 
-    if DEBUG:
+    if args["debug"]:
         # Open text file to store UAV position
         pose_file = open(POSE_FILE, "w")
         pid_file = open(PID_FILE, "w")
@@ -74,13 +103,9 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
             # Flip signs because aruco has bottom right and down as positive axis
             marker_pose_aruco_ref = marker_tracker.get_pose()
 
-            # Convert to UAV body reference frame; just flipping the values because camera is "sideways"
-            ''' Yellow Marker'''
-            # marker_pose_body_ref = np.array([marker_pose_cam_ref[1], -marker_pose_cam_ref[0]])
-
             '''Aruco Marker'''
             marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
-            print(marker_pose_body_ref)
+            # print(marker_pose_body_ref)
 
             command_right = pid(marker_pose_body_ref[0])
             command_forward = pid(marker_pose_body_ref[1])
@@ -91,12 +116,12 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
                                                                 right=command_right,
                                                                 down=0)
 
-            if DEBUG:
-                print("Sending: {}, {}".format(command_right, command_forward))
+            if args["debug"]:
+                # print("Sending: {}, {}".format(command_right, command_forward))
                 pose_file.write("{} {}\n".format(marker_pose_body_ref[0], marker_pose_body_ref[1]))
                 pid_file.write("{} {}\n".format(command_forward, command_right))
         else:
-            if DEBUG:
+            if args["debug"]:
                 pose_file.write("{} {}\n".format("N/A", "N/A"))
                 pid_file.write("{} {}\n".format("N/A", "N/A"))
 
@@ -115,10 +140,12 @@ def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
 def main():
     # Create Marker Detector; before UAV takes off because takes a while to process
     marker_tracker = ArucoTracker(src=args["video"],
-                                  use_pi=args["picamera"],
-                                  resolution=(640, 480),
-                                  framerate=15,
-                                  debug=args["debug"])
+                                 use_pi=args["picamera"],
+                                 debug=args["debug"],
+                                 resolution=args["resolution"],
+                                 framerate=args["fps"],
+                                 video_dir=args["dir"],
+                                 video_file=args["name"])
 
     # Connect to the Pixhawk
     vehicle = connect_vehicle()

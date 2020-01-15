@@ -67,6 +67,15 @@ def land(vehicle):
     print("Closing vehicle object")
     vehicle.close()
 
+def rtl(vehicle):
+    print("Returning to Launch")
+
+    vehicle.mode = VehicleMode("RTL")
+
+    # Close vehicle object before exiting script
+    print("Close vehicle object")
+    vehicle.close()
+
 def wait_for_home_location(vehicle):
     # Wait for GPS to set home location
     while not vehicle.home_location:

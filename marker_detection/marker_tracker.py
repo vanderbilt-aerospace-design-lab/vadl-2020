@@ -7,8 +7,7 @@ import cv2.aruco as aruco
 import numpy as np
 import os
 
-# CALIBRATION_FILE = "camera_calibration/calibration_data/arducam.yaml"
-CALIBRATION_FILE = "camera_calibration/calibration_data/arducam_1_11.yaml"
+CALIBRATION_FILE = "camera_calibration/calibration_parameters/arducam.yaml"
 
 ''' Marker Tracker Classes
 

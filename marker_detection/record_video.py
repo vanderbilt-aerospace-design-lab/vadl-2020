@@ -2,6 +2,7 @@ import argparse
 import os
 from camera import VideoStreamer, VideoWriter
 
+''' Record a video with a USB/webcam or the Picam.'''
 VIDEO_DIR = "marker_detection/videos"
 
 #Set up option parsing to get connection string

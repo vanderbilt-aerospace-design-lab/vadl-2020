@@ -63,7 +63,7 @@ def main():
     while True:
         aruco_tracker.track_marker()
         if aruco_tracker.is_marker_found():
-            print(aruco_tracker.get_pose_body_coords())
+            print(aruco_tracker.get_pose())
 
 if __name__ == "__main__":
     main()
