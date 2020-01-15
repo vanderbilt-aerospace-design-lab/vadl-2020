@@ -83,12 +83,10 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
     # Hover until manual override
     print("Tracking marker...")
-    # while vehicle.mode == VehicleMode("GUIDED"):
-    while True:
+    while vehicle.mode == VehicleMode("GUIDED"):
         # Track marker
-        # marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
-        marker_tracker.track_marker()
-        # print("Vehicle: {}, {}".format(vehicle.location.local_frame.north, vehicle.location.local_frame.east))
+        marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
+
         if marker_tracker.is_marker_found():
 
             # Flip signs because aruco has bottom right and down as positive axis
@@ -99,12 +97,16 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
             # command_right = pid(marker_pose_body_ref[0])
             # command_forward = pid(marker_pose_body_ref[1])
+
             print(marker_pose_body_ref)
+
             # Send position command to the vehicle
-            # dronekit_utils.goto_position_target_body_offset_ned(vehicle,
-            #                                                     forward=command_forward,
-            #                                                     right=command_right,
-            #                                                     down=0)
+            dronekit_utils.goto_position_target_body_offset_ned(vehicle,
+                                                                forward=command_forward,
+                                                                right=command_right,
+                                                                down=0)
+            # Mess w/ this during test
+            time.sleep(0.5)
 
             if args["debug"]:
                 # print("Sending: {}, {}".format(command_right, command_forward))
@@ -117,10 +119,10 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
 
 def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
     # Forward facing
-    aruco_to_body_transform = np.array([[1, 0, 0, 0],
-                                        [0, 1, 0, 0],
-                                        [0, 0, 1, 0],
-                                        [0, 0, 0, 1]])
+    aruco_to_body_transform = np.array([[-1, 0, 0, 0],
+                                        [0, -1, 0, 0],
+                                        [0, 0, -1, 0],
+                                        [0, 0, 0, -1]])
 
     # Original
     aruco_pose = np.array([aruco_pose[0], aruco_pose[1], aruco_pose[2], 1])
@@ -140,13 +142,13 @@ def main():
                                  video_file=args["name"])
 
     # Connect to the Pixhawk
-    #vehicle = dronekit_utils.connect_vehicle_args(args)
-    vehicle = True
+    vehicle = dronekit_utils.connect_vehicle_args(args)
+
     # Arm the UAV
-    #dronekit_utils.arm(vehicle)
+    dronekit_utils.arm(vehicle)
 
     # Takeoff and fly to a target altitude
-    #dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
 
     # Maintain hover over a marker
     marker_hover(vehicle, marker_tracker)
