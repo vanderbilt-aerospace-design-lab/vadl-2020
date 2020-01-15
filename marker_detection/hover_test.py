@@ -118,6 +118,19 @@ def marker_hover(vehicle, marker_tracker=ArucoTracker()):
                 pid_file.write("{} {}\n".format("N/A", "N/A"))
 
 def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
+    # Forward facing
+    aruco_to_body_transform = np.array([[-1, 0, 0, 0],
+                                        [0, -1, 0, 0],
+                                        [0, 0, -1, 0],
+                                        [0, 0, 0, 1]])
+
+    # Original
+    aruco_pose = np.array([aruco_pose[0], aruco_pose[1], aruco_pose[2], 1])
+
+    body_pose = np.matmul(aruco_pose, aruco_to_body_transform)
+
+    return body_pose
+
     # Flip signs because aruco has bottom right and down as positive axis
     aruco_pose = -aruco_pose
 
