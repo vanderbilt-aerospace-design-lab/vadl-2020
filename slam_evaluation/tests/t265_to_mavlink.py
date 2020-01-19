@@ -40,7 +40,7 @@ connection_string_default = '/dev/ttyAMA0'
 connection_baudrate_default = 921600
 vision_msg_hz_default = 30
 confidence_msg_hz_default = 1
-camera_orientation_default = 1
+camera_orientation_default = 2
 
 # In NED frame, offset from the IMU or the center of gravity to the camera's origin point
 body_offset_enabled = 0
@@ -163,6 +163,9 @@ elif camera_orientation == 1:
     # Downfacing, USB port to the right
     H_aeroRef_T265Ref = np.array([[0,0,-1,0],[1,0,0,0],[0,-1,0,0],[0,0,0,1]])
     H_T265body_aeroBody = np.array([[0,1,0,0],[1,0,0,0],[0,0,-1,0],[0,0,0,1]])
+elif camera_orientation == 2:
+    # Sideways, USB port facing the back 
+    H_T265body_aeroBody = np.array([[-1,0,0,0],[0,0,-1,0],[0,-1,0,0],[0,0,0,1]])
 else: 
     # Default is facing forward, USB port to the right
     H_aeroRef_T265Ref = np.array([[0,0,-1,0],[1,0,0,0],[0,-1,0,0],[0,0,0,1]])
