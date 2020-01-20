@@ -53,7 +53,7 @@ body_offset_z = 0       # In meters (m)
 scale_factor = 1.0
 
 # Enable using yaw from compass to align north (zero degree is facing north)
-compass_enabled = 1
+compass_enabled = 0
 
 # Default global position of home/ origin
 #home_lat = 151269321       # Somewhere in Africa
@@ -367,9 +367,10 @@ H_aeroRef_aeroBody = None
 heading_north_yaw = None
 
 # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
+print("Begin dummy code")
 if vehicle.parameters['MAG_ENABLE'] == 0:
     vehicle.parameters['MAG_ENABLE'] = 1
-if vehicle.parameters['COMPASS_USE'] = 0:
+if vehicle.parameters['COMPASS_USE'] == 0:
     vehicle.parameters['COMPASS_USE'] = 1
 dronekit_utils.arm(vehicle)
 dronekit_utils.disarm(vehicle)
