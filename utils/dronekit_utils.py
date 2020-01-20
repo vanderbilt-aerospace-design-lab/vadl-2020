@@ -40,6 +40,16 @@ def arm(vehicle):
     vehicle.mode = VehicleMode("GUIDED")
     vehicle.armed = True
 
+def arm_no_failsafe(vehicle):
+
+    # Do not arm until EKF has found its home location
+    wait_for_home_location(vehicle)
+
+    print("Arming motors")
+    # Copter should arm in GUIDED mode
+    vehicle.mode = VehicleMode("GUIDED")
+    vehicle.armed = True
+
 def disarm(vehicle):
     print("Disarming vehicle")
     vehicle.armed = False
