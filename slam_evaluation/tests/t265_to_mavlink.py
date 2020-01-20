@@ -340,6 +340,21 @@ def scale_update():
     while True:
         scale_factor = float(input("INFO: Type in new scale as float number\n"))
         print("INFO: New scale is ", scale_factor)  
+      
+# Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
+def dummy_fxn():
+    print("Begin dummy code")
+    if vehicle.parameters['MAG_ENABLE'] == 0:
+        vehicle.parameters['MAG_ENABLE'] = 1
+    if vehicle.parameters['COMPASS_USE'] == 0:
+        vehicle.parameters['COMPASS_USE'] = 1
+      
+    dronekit_utils.arm_no_failsafe(vehicle)
+    dronekit_utils.disarm(vehicle)
+    
+    vehicle.parameters['MAG_ENABLE'] = 0
+    vehicle.parameters['COMPASS_USE'] = 0
+    print("Done with bullshit")
 
 #######################################
 # Main code starts here
@@ -423,19 +438,6 @@ try:
             # Realign heading to face north using initial compass data
             if compass_enabled == 1:
                 H_aeroRef_aeroBody = H_aeroRef_aeroBody.dot( tf.euler_matrix(0, 0, heading_north_yaw, 'sxyz'))
-            
-#             if vehicle.is_armable and dummy == 0:
-#                 # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
-#                 print("Begin dummy code")
-#                 if vehicle.parameters['MAG_ENABLE'] == 0:
-#                     vehicle.parameters['MAG_ENABLE'] = 1
-#                 if vehicle.parameters['COMPASS_USE'] == 0:
-#                     vehicle.parameters['COMPASS_USE'] = 1
-#                 dronekit_utils.arm(vehicle)
-#                 dronekit_utils.disarm(vehicle)
-#                 vehicle.parameters['MAG_ENABLE'] = 0
-#                 vehicle.parameters['COMPASS_USE'] = 0
-#                 dummy = 1
              
             # Show debug messages here
             if debug_enable == 1:
