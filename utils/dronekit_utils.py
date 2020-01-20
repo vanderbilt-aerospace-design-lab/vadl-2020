@@ -40,6 +40,10 @@ def arm(vehicle):
     vehicle.mode = VehicleMode("GUIDED")
     vehicle.armed = True
 
+def disarm(vehicle):
+    print("Disarming vehicle")
+    vehicle.armed = False
+
 def takeoff(vehicle, aTargetAltitude):
     # Confirm vehicle armed before attempting to take off
     while not vehicle.armed:
