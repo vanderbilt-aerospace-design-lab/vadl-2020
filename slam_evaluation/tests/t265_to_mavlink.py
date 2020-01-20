@@ -424,18 +424,18 @@ try:
             if compass_enabled == 1:
                 H_aeroRef_aeroBody = H_aeroRef_aeroBody.dot( tf.euler_matrix(0, 0, heading_north_yaw, 'sxyz'))
             
-            if vehicle.is_armable and dummy == 0:
-                # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
-                print("Begin dummy code")
-                if vehicle.parameters['MAG_ENABLE'] == 0:
-                    vehicle.parameters['MAG_ENABLE'] = 1
-                if vehicle.parameters['COMPASS_USE'] == 0:
-                    vehicle.parameters['COMPASS_USE'] = 1
-                dronekit_utils.arm(vehicle)
-                dronekit_utils.disarm(vehicle)
-                vehicle.parameters['MAG_ENABLE'] = 0
-                vehicle.parameters['COMPASS_USE'] = 0
-                dummy = 1
+#             if vehicle.is_armable and dummy == 0:
+#                 # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
+#                 print("Begin dummy code")
+#                 if vehicle.parameters['MAG_ENABLE'] == 0:
+#                     vehicle.parameters['MAG_ENABLE'] = 1
+#                 if vehicle.parameters['COMPASS_USE'] == 0:
+#                     vehicle.parameters['COMPASS_USE'] = 1
+#                 dronekit_utils.arm(vehicle)
+#                 dronekit_utils.disarm(vehicle)
+#                 vehicle.parameters['MAG_ENABLE'] = 0
+#                 vehicle.parameters['COMPASS_USE'] = 0
+#                 dummy = 1
              
             # Show debug messages here
             if debug_enable == 1:
