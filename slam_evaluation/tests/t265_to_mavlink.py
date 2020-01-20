@@ -366,17 +366,6 @@ current_confidence = None
 H_aeroRef_aeroBody = None
 heading_north_yaw = None
 
-# Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
-print("Begin dummy code")
-if vehicle.parameters['MAG_ENABLE'] == 0:
-    vehicle.parameters['MAG_ENABLE'] = 1
-if vehicle.parameters['COMPASS_USE'] == 0:
-    vehicle.parameters['COMPASS_USE'] = 1
-dronekit_utils.arm(vehicle)
-dronekit_utils.disarm(vehicle)
-vehicle.parameters['MAG_ENABLE'] = 0
-vehicle.parameters['COMPASS_USE'] = 0
-
 # Send MAVlink messages in the background
 sched = BackgroundScheduler()
 
@@ -397,6 +386,7 @@ if compass_enabled == 1:
 
 print("INFO: Sending VISION_POSITION_ESTIMATE messages to FCU.")
 
+dummy = 0
 try:
     while True:
         # Wait for the next set of frames from the camera
@@ -433,7 +423,20 @@ try:
             # Realign heading to face north using initial compass data
             if compass_enabled == 1:
                 H_aeroRef_aeroBody = H_aeroRef_aeroBody.dot( tf.euler_matrix(0, 0, heading_north_yaw, 'sxyz'))
-
+            
+            if vehicle.is_armable and dummy == 0:
+                # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
+                print("Begin dummy code")
+                if vehicle.parameters['MAG_ENABLE'] == 0:
+                    vehicle.parameters['MAG_ENABLE'] = 1
+                if vehicle.parameters['COMPASS_USE'] == 0:
+                    vehicle.parameters['COMPASS_USE'] = 1
+                dronekit_utils.arm(vehicle)
+                dronekit_utils.disarm(vehicle)
+                vehicle.parameters['MAG_ENABLE'] = 0
+                vehicle.parameters['COMPASS_USE'] = 0
+                dummy = 1
+             
             # Show debug messages here
             if debug_enable == 1:
                 os.system('clear') # This helps in displaying the messages to be more readable
