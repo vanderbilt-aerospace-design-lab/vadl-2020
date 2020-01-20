@@ -166,6 +166,7 @@ elif camera_orientation == 1:
     H_T265body_aeroBody = np.array([[0,1,0,0],[1,0,0,0],[0,0,-1,0],[0,0,0,1]])
 elif camera_orientation == 2:
     # Sideways, USB port facing the back 
+    H_aeroRef_T265Ref = np.array([[0,0,-1,0],[1,0,0,0],[0,-1,0,0],[0,0,0,1]])
     H_T265body_aeroBody = np.array([[-1,0,0,0],[0,0,-1,0],[0,-1,0,0],[0,0,0,1]])
 else: 
     # Default is facing forward, USB port to the right
