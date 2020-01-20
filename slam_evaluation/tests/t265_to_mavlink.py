@@ -30,6 +30,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
+from utils import dronekit_utils
 
 #######################################
 # Parameters
@@ -363,6 +364,16 @@ data = None
 current_confidence = None
 H_aeroRef_aeroBody = None
 heading_north_yaw = None
+
+# Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
+if vehicle.parameters['MAG_ENABLE'] == 0:
+    vehicle.parameters['MAG_ENABLE'] = 1
+if vehicle.parameters['COMPASS_USE'] = 0:
+    vehicle.parameters['COMPASS_USE'] = 1
+dronekit_utils.arm(vehicle)
+dronekit_utils.disarm(vehicle)
+vehicle.parameters['MAG_ENABLE'] = 0
+vehicle.parameters['COMPASS_USE'] = 0
 
 # Send MAVlink messages in the background
 sched = BackgroundScheduler()
