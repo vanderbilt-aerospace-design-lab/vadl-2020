@@ -346,10 +346,15 @@ def dummy_fxn():
     print("Begin dummy code")
     if vehicle.parameters['MAG_ENABLE'] == 0:
         vehicle.parameters['MAG_ENABLE'] = 1
+        print("setting mag_enable to 1")
     if vehicle.parameters['COMPASS_USE'] == 0:
         vehicle.parameters['COMPASS_USE'] = 1
+        print("setting compass_use to 1")
       
     dronekit_utils.arm_no_failsafe(vehicle)
+    while vehicle.armed == False:
+        print("Waiting for arming")
+        time.sleep(1)
     dronekit_utils.disarm(vehicle)
     
     vehicle.parameters['MAG_ENABLE'] = 0
@@ -368,6 +373,8 @@ print("INFO: Connecting to vehicle.")
 while (not vehicle_connect()):
     pass
 print("INFO: Vehicle connected.")
+
+dummy_fxn()
 
 # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
 vehicle.add_message_listener('STATUSTEXT', statustext_callback)
@@ -400,8 +407,6 @@ if compass_enabled == 1:
     time.sleep(1)
 
 print("INFO: Sending VISION_POSITION_ESTIMATE messages to FCU.")
-
-dummy = 0
 try:
     while True:
         # Wait for the next set of frames from the camera
