@@ -1,9 +1,6 @@
-from dronekit import connect, VehicleMode
 import time
-import dronekit_sitl
 import argparse
 from utils import dronekit_utils
-#uh
 
 ''' Test script for auto reboot and reconnection'''
 
@@ -20,10 +17,14 @@ def main():
 
     # Reboot
     dronekit_utils.reboot(vehicle)
+    time.sleep(1)
+    vehicle.close()
+
+    time.sleep(7)
 
     # Reconnect
-    dronekit_utils.connect_vehicle_args(args)
-
+    vehicle = dronekit_utils.connect_vehicle_args(args)
+    print("Success: {}".format(vehicle.version)) 
 
 if __name__ == "__main__":
     main()
