@@ -88,7 +88,6 @@ parser.add_argument('--camera_orientation', type=int,
 parser.add_argument('--debug_enable',type=int,
                     help="Enable debug messages on terminal")
 
-
 args = parser.parse_args()
 
 connection_string = args.connect
@@ -307,19 +306,6 @@ def att_msg_callback(self, attr_name, value):
         heading_north_yaw = value.yaw
         print("INFO: Received ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
 
-def vehicle_connect():
-    global vehicle
-    
-    try:
-        vehicle = connect(connection_string, wait_ready = True, baud = connection_baudrate, source_system = 1)
-    except:
-        print('Connection error! Retrying...')
-
-    if vehicle == None:
-        return False
-    else:
-        return True
-
 def realsense_connect():
     global pipe
     # Declare RealSense pipeline, encapsulating the actual device and sensors
@@ -342,24 +328,29 @@ def scale_update():
         print("INFO: New scale is ", scale_factor)  
       
 # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
-def dummy_fxn():
-    print("Begin dummy code")
-    if vehicle.parameters['MAG_ENABLE'] == 0:
-        vehicle.parameters['MAG_ENABLE'] = 1
-        print("setting mag_enable to 1")
-    if vehicle.parameters['COMPASS_USE'] == 0:
-        vehicle.parameters['COMPASS_USE'] = 1
-        print("setting compass_use to 1")
-      
+def trick_compass(old_vehicle):
+    if old_vehicle.parameters['MAG_ENABLE'] == 0 or old_vehicle.parameters['COMPASS_USE'] == 0:
+        # Enable the compass and the EKF's use of it for heading
+        old_vehicle.parameters['COMPASS_USE'] = 1
+        old_vehicle.parameters['MAG_ENABLE'] = 1
+        print("Enabling MAG_ENABLE and COMPASS_USE")
+
+        # Reboot and reconnect to the vehicle
+        vehicle = dronekit_utils.reboot_and_connect(old_vehicle, args)
+
+    # Arm and disarm
     dronekit_utils.arm_no_failsafe(vehicle)
-    while vehicle.armed == False:
+    while not vehicle.armed:
         print("Waiting for arming")
         time.sleep(1)
     dronekit_utils.disarm(vehicle)
-    
+
+    # Disable compass parameters; TODO: no reboot required?
     vehicle.parameters['MAG_ENABLE'] = 0
     vehicle.parameters['COMPASS_USE'] = 0
-    print("Done with bullshit")
+    print("MAG_ENABLE and COMPASS_USE set to 0")
+
+    return vehicle
 
 #######################################
 # Main code starts here
@@ -370,11 +361,12 @@ realsense_connect()
 print("INFO: Realsense connected.")
 
 print("INFO: Connecting to vehicle.")
-while (not vehicle_connect()):
-    pass
+vehicle = dronekit_utils.connect_vehicle()
 print("INFO: Vehicle connected.")
 
-dummy_fxn()
+print("INFO: Tricking compass.")
+vehicle = trick_compass(vehicle)
+print("INFO: Compass tricked.")
 
 # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
 vehicle.add_message_listener('STATUSTEXT', statustext_callback)

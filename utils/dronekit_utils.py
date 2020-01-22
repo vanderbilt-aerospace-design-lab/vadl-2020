@@ -3,7 +3,9 @@ from dronekit import connect, VehicleMode
 from pymavlink import mavutil
 import time
 
-def connect_vehicle(connection_string):
+CONNECTION_STRING = "/dev/ttyAMA0"
+
+def connect_vehicle(connection_string=CONNECTION_STRING):
     # Connect to the Vehicle
     print("\nConnecting to vehicle on: %s" % connection_string)
 
@@ -12,7 +14,7 @@ def connect_vehicle(connection_string):
     else:
         return connect(connection_string, wait_ready=True, baud=921600)
 
-def connect_vehicle_args(args):
+def connect_vehicle_args(args=None):
     # Start SITL if connection string specified
     if args["sitl"]:
         import dronekit_sitl
@@ -51,6 +53,18 @@ def disarm(vehicle):
 def reboot(vehicle):
     print("Rebooting FCU")
     vehicle.reboot()
+
+def reboot_and_connect(vehicle, args):
+    # Reboot
+    reboot(vehicle)
+    time.sleep(1)
+    vehicle.close()
+
+    # Wait for reboot to finish
+    time.sleep(7)
+
+    # Reconnect
+    return connect_vehicle_args(args)
 
 
 def takeoff(vehicle, aTargetAltitude):
