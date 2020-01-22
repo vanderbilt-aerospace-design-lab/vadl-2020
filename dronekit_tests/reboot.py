@@ -3,6 +3,7 @@ import time
 import dronekit_sitl
 import argparse
 from utils import dronekit_utils
+#uh
 
 ''' Test script for auto reboot and reconnection'''
 
