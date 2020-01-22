@@ -48,6 +48,11 @@ def disarm(vehicle):
     print("Disarming vehicle")
     vehicle.armed = False
 
+def reboot(vehicle):
+    print("Rebooting FCU")
+    vehicle.reboot()
+
+
 def takeoff(vehicle, aTargetAltitude):
     # Confirm vehicle armed before attempting to take off
     while not vehicle.armed:
