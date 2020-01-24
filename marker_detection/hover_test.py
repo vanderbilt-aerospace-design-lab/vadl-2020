@@ -1,4 +1,4 @@
-''' Flight landing script
+    ''' Flight landing script
     Goal is to takeoff, fly to a set altitude,
     switch to tracking mode, and maintain a
     hover over the marker. Manual override always available. '''
@@ -8,15 +8,18 @@ import argparse
 import numpy as np
 from simple_pid import PID
 import os
-from utils import dronekit_utils
-from marker_tracker import ArucoTracker
+import time
+from utils import dronekit_utils, file_utils
+from marker_detection.marker_tracker import ArucoTracker
 
 TARGET_ALTITUDE = 2 # Meters
 
 # Files relative to project directory
-VIDEO_FILE_SAVE = 'marker_detection/videos/marker_hover_1.mp4'
-POSE_FILE = "marker_detection/pose_data/marker_pose_0.txt"
-PID_FILE = "marker_detection/pid_data/pid_0.txt"
+VIDEO_FILE_DIR = "marker_detection/videos"
+PID_DIR = "marker_detection/pid_data/"
+file_utils.make_dir(PID_DIR)
+VIDEO_FILE_SAVE = VIDEO_FILE_DIR + file_utils.create_file_name_date() + ".mp4"
+PID_FILE = PID_DIR + file_utils.create_file_name_date() + ".txt"
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
@@ -33,9 +36,12 @@ parser.add_argument('-r','--resolution', type=int, default=480,
 parser.add_argument('-f','--fps', type=int, default=30,
                     help="Camera frame rate")
 parser.add_argument('--dir', default=None,
-                    help="Directory to save file")
+                    help="Directory to save file. Defaults to marker_detection/videos")
 parser.add_argument('-n','--name', default=None,
-                    help="File name")
+                    help="File name. If none specified, defaults to the current date.")
+parser.add_argument('--pose_file', default=None,
+                    help="Pose file name for debugging. Do not input directory, "
+                         "just the file name w/ or w/o .txt at the end. If none specified, defaults to the current date.")
 
 args = vars(parser.parse_args())
 
@@ -46,109 +52,89 @@ if not isinstance(args["video"], int):
 else:
     VIDEO_FILE_STREAM = 0
 
-# Pick resolution
-if args["resolution"] == 1080:
-    args["resolution"] = (1920, 1080)
-elif args["resolution"] == 720:
-    args["resolution"] = (1280, 720)
-elif args["resolution"] == 480:
-    args["resolution"] = (640, 480)
-elif args["resolution"] == 240:
-    args["resolution"] = (352, 240)
-elif args["resolution"] == 144:
-    args["resolution"] = (256, 144)
-else:
-    args["resolution"] = (64, 64)
-args = vars(parser.parse_args())
+def ned_to_body(location_ned, attitude):
+    roll_R = tf.rotation_matrix(attitude.roll, (1, 0, 0))[0:3, 0:3]
+    pitch_R = tf.rotation_matrix(attitude.pitch, (0, 1, 0))[0:3, 0:3]
+    yaw_R = tf.rotation_matrix(attitude.yaw, (0, 0, 1))[0:3, 0:3]
+    transform = np.matmul(np.matmul(roll_R, pitch_R), yaw_R)
 
-if not isinstance(args["video"], int):
-    if not os.path.exists(args["video"]):
-        raise Exception("ERROR: Video file does not exist")
-    VIDEO_FILE_STREAM = args["video"]
-else:
-    VIDEO_FILE_STREAM = 0
+    ned_mat = np.array([location_ned.north, location_ned.east, location_ned.down])
 
-def connect_vehicle():
-    #Start SITL if connection string specified
-    if args["sitl"]:
-        import dronekit_sitl
-        sitl = dronekit_sitl.start_default()
-        CONNECTION_STRING = sitl.connection_string()
-    else:
-        CONNECTION_STRING = "/dev/ttyAMA0"
+    return np.matmul(ned_mat, transform)
 
-    # Connect to the Vehicle
-    return dronekit_utils.connect_vehicle(CONNECTION_STRING)
-
-def marker_hover(vehicle, marker_tracker=ArucoTracker()):
+def marker_hover(vehicle, marker_tracker):
 
     pid = PID(1, 0.1, 0.05, setpoint=0)
     pid.sample_time = 0.01
 
     if args["debug"]:
         # Open text file to store UAV position
-        pose_file = open(POSE_FILE, "w")
-        pid_file = open(PID_FILE, "w")
+        pid_file = file_utils.open_file(PID_FILE)
 
     # Hover until manual override
     print("Tracking marker...")
     while vehicle.mode == VehicleMode("GUIDED"):
-
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
 
-        # print("Vehicle: {}, {}".format(vehicle.location.local_frame.north, vehicle.location.local_frame.east))
         if marker_tracker.is_marker_found():
 
             # Flip signs because aruco has bottom right and down as positive axis
             marker_pose_aruco_ref = marker_tracker.get_pose()
 
             '''Aruco Marker'''
-            marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref, marker_tracker)
-            # print(marker_pose_body_ref)
+            marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref)
 
-            command_right = pid(marker_pose_body_ref[0])
-            command_forward = pid(marker_pose_body_ref[1])
+            # command_forward = pid(marker_pose_body_ref[0])
+            # command_right = pid(marker_pose_body_ref[1])
+            command_forward = marker_pose_body_ref[0]
+            command_right = marker_pose_body_ref[1]
+
+            print(marker_pose_body_ref)
 
             # Send position command to the vehicle
             dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                                 forward=command_forward,
                                                                 right=command_right,
                                                                 down=0)
+            print(vehicle.location.local_frame)
+            # Mess w/ this during test
+            time.sleep(0.5)
 
             if args["debug"]:
                 # print("Sending: {}, {}".format(command_right, command_forward))
-                pose_file.write("{} {}\n".format(marker_pose_body_ref[0], marker_pose_body_ref[1]))
                 pid_file.write("{} {}\n".format(command_forward, command_right))
         else:
             if args["debug"]:
-                pose_file.write("{} {}\n".format("N/A", "N/A"))
                 pid_file.write("{} {}\n".format("N/A", "N/A"))
 
-def aruco_ref_to_body_ref(aruco_pose, marker_tracker):
-    # Flip signs because aruco has bottom right and down as positive axis
-    aruco_pose = -aruco_pose
+def aruco_ref_to_body_ref(aruco_pose):
+    # Forward facing
+    aruco_to_body_transform = np.array([[-1, 0, 0, 0],
+                                        [0, -1, 0, 0],
+                                        [0, 0, -1, 0],
+                                        [0, 0, 0, -1]])
 
-    # Remove z-component
-    aruco_pose = np.delete(aruco_pose, 2, 0)
+    # Original
+    aruco_pose = np.array([aruco_pose[0], aruco_pose[1], aruco_pose[2], 1])
 
-    # Convert camera resolution from pixels to meters; reshape from dimensions (1,2) to (2,)
-    cam_dimensions = np.squeeze(np.array([marker_tracker.get_resolution()]) * marker_tracker.get_scale_factor())
+    body_pose = np.matmul(aruco_pose, aruco_to_body_transform)
 
-    return cam_dimensions / 2 - aruco_pose
+    return np.array([body_pose[0], body_pose[1], body_pose[2]])
 
 def main():
     # Create Marker Detector; before UAV takes off because takes a while to process
     marker_tracker = ArucoTracker(src=args["video"],
-                                 use_pi=args["picamera"],
-                                 debug=args["debug"],
-                                 resolution=args["resolution"],
-                                 framerate=args["fps"],
-                                 video_dir=args["dir"],
-                                 video_file=args["name"])
+                                use_pi=args["picamera"],
+                                debug=args["debug"],
+                                resolution=args["resolution"],
+                                framerate=args["fps"],
+                                video_dir=args["dir"],
+                                video_file=args["name"],
+                                pose_file=args["pose_file"])
 
     # Connect to the Pixhawk
-    vehicle = connect_vehicle()
+    vehicle = dronekit_utils.connect_vehicle_args(args)
 
     # Arm the UAV
     dronekit_utils.arm(vehicle)

@@ -4,12 +4,13 @@ from imutils.video import FileVideoStream
 import cv2
 import datetime
 import time
+import numpy as np
+import pyrealsense2 as rs
 
 # specify as relative or absolute
 VIDEO_DIR = "marker_detection/videos"
 
 ''' Camera Class
-
     This high-level class retains camera parameters, such as resolution and frame rate. It also keeps track of 
     if this camera is being used on a Raspberry Pi, since the Pi requires different code for retrieving images.
 '''
@@ -18,9 +19,10 @@ class Camera(object):
                  use_pi=-1,
                  resolution=(640, 480),
                  framerate=30):
-        self.resolution = resolution
+        self.resolution = None
+        self.set_resolution(resolution)
         self.framerate = framerate
-        self.use_rpi = 1 if use_pi > 0 else 0
+        self.use_pi = 1 if use_pi > 0 else 0
 
 
     def get_resolution(self):
@@ -29,9 +31,28 @@ class Camera(object):
     def get_framerate(self):
         return self.framerate
 
+    # Sets the resolution based off the single number passed in. Convention is to pass in the Height of the desired
+    # resolution
+    def set_resolution(self,resolution):
+        if resolution == 1944:
+            self.resolution = (2592, 1944)
+        if resolution == 1080:
+            self.resolution = (1920, 1080)
+        elif resolution == 972:
+            self.resolution = (1296, 972)
+        elif resolution == 730:
+            self.resolution = (1296, 730)
+        elif resolution == 480:
+            self.resolution = (640, 480)
+        elif resolution == 240:
+            self.resolution = (352, 240)
+        elif resolution == 144:
+            self.resolution = (256, 144)
+        else:
+            self.resolution = (64, 64)
+
 
 ''' VideoStreamer Class
-
     This class is used to stream video from an arbitrary camera source. Once the source is defined, all the methods 
     are the same no matter what camera or computer you are using. It utilizes the VideoStream class, created by 
     Adrian Rosebrock and well documented at these links:
@@ -54,7 +75,7 @@ class VideoStreamer(Camera):
     def __init__(self,
                  src=0,
                  use_pi=-1,
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30):
 
         super(VideoStreamer, self).__init__(use_pi=use_pi,
@@ -65,9 +86,9 @@ class VideoStreamer(Camera):
         # FileVideoStream class is used for streaming from a saved video.
         if isinstance(src, int):
             self.vs = VideoStream(src=src,
-                                  usePiCamera=use_pi > 0,
-                                  resolution=resolution,
-                                  framerate=framerate).start()
+                                  usePiCamera=self.use_pi > 0,
+                                  resolution=self.resolution,
+                                  framerate=self.framerate).start()
         else:
             self.vs = FileVideoStream(path=src)
 
@@ -86,7 +107,6 @@ class VideoStreamer(Camera):
         self.vs.stop()
 
 ''' VideoWriter Class
-
     This class is used to save videos. It will automatically name your file using the current date and time if you 
     do not specify a name. Default encoding is .avi, since this has been proven to work best with cv2's funky video 
     writing methods.
@@ -96,7 +116,7 @@ class VideoWriter(Camera):
                  video_dir=VIDEO_DIR,
                  video_file=None,
                  ext=".avi",
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30):
 
         super(VideoWriter, self).__init__(resolution=resolution,
@@ -112,7 +132,8 @@ class VideoWriter(Camera):
 
         # Codec encoding. You shouldn't have to mess with this, and it is highly recommended you don't!
         self.fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        self.writer = cv2.VideoWriter(self.video_dir + "/" + self.video_file + self.ext, self.fourcc, framerate, resolution, True)
+        self.writer = cv2.VideoWriter(self.video_dir + "/" + self.video_file + self.ext, self.fourcc,
+                                      self.framerate, self.resolution, True)
 
         self.frame_start = 0
 
@@ -137,3 +158,70 @@ class VideoWriter(Camera):
     # Release the output when done (rarely needed - video is not corrupted if you use Ctrl-C or turn off your computer)
     def stop(self):
         self.writer.release()
+
+# TODO: Figure out behavior when tracking fails
+class Realsense(Camera):
+    def __init__(self):
+        super(Realsense, self).__init__()
+
+        self.pipe = self.connect()
+        self.data = None
+        self.pose_object = None
+        self.pose = None
+        self.quaternion = None
+
+
+    def connect(self):
+        print("Connecting to Realsense")
+
+        # Declare RealSense pipeline, encapsulating the actual device and sensors
+        pipe = rs.pipeline()
+
+        # Build config object before requesting data
+        cfg = rs.config()
+
+        # Enable the stream we are interested in
+        cfg.enable_stream(rs.stream.pose)  # Positional data
+
+        # Start streaming with requested config
+        pipe.start(cfg)
+
+        return pipe
+
+    # Returns the pose as a np array
+    # Currently returns pose since this is most frequently needed value
+    # May change to be more versatile at a later point
+    def read(self):
+        # Wait for frames
+        frames = self.pipe.wait_for_frames()
+
+        # Get pose frame
+        self.data = frames.get_pose_frame()
+
+        if self.is_tracking():
+
+            # Pose data consists of translation and rotation
+            self.pose_object = self.data.get_pose_data()
+
+            self.pose = np.array([self.pose_object.translation.x,
+                                  self.pose_object.translation.y,
+                                  self.pose_object.translation.z])
+
+            self.quaternion = np.array([self.pose_object.rotation.w,
+                                        self.pose_object.rotation.x,
+                                        self.pose_object.rotation.y,
+                                        self.pose_object.rotation.z])
+            return self.pose
+
+    def is_tracking(self):
+        return self.data
+
+    def get_pose(self):
+        return self.pose
+
+    def get_quaternion(self):
+        return self.quaternion
+
+    # Terminate the capture thread.
+    def stop(self):
+        self.pipe.stop()

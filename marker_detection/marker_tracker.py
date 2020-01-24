@@ -6,11 +6,14 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 import os
+from utils import file_utils
 
 CALIBRATION_FILE = "camera_calibration/calibration_parameters/arducam.yaml"
+POSE_DIR = "marker_detection/pose_data"
+file_utils.make_dir(POSE_DIR)
+POSE_FILE = POSE_DIR + "/" + file_utils.create_file_name_date() + ".txt" # Default pose file name
 
 ''' Marker Tracker Classes
-
     These classes are used to track a marker using a single camera. They maintain various image and marker data, and
     can be used to retrieve the pose relative to the camera. Each class is used to detect a different kind of marker.
     The classes are derived from the VideoStreamer class, which is used to retrieve images from a camera or video file 
@@ -22,24 +25,26 @@ class MarkerTracker(VideoStreamer):
     def __init__(self,
                  src=0,
                  use_pi=-1,
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30,
-                 marker_length=0.159,
+                 marker_length=3.05,
                  debug=0,
                  video_dir=None,
-                 video_file=None):
+                 video_file=None,
+                 pose_file=POSE_FILE):
 
         super(MarkerTracker, self).__init__(src=src,
                                             use_pi=use_pi,
                                             resolution=resolution,
                                             framerate=framerate)
         self.marker_length = marker_length
-        self.pose = None
+        self.pose = None # Stored as (1,3) np array of x,y,z
         self.marker_found = False
         self.cur_frame = None
         self.detected_frame = None # Store visual information about the marker
         self.scale_factor = None
         self.debug = debug
+	self.true_alt = 0
 
         # Load camera calibration parameters
         self.camera_mat, self.dist_coeffs = file_utils.load_yaml(os.path.abspath(CALIBRATION_FILE))
@@ -50,8 +55,23 @@ class MarkerTracker(VideoStreamer):
         if self.debug:
             self.video_writer = VideoWriter(video_dir=video_dir,
                                             video_file=video_file,
-                                            resolution=self.get_resolution(),
-                                            framerate=self.get_framerate())
+                                            resolution=resolution,
+                                            framerate=framerate)
+
+            # Create pose file name and open it
+            # Name can be accepted by itself or with ".txt" at the end
+            if pose_file is None:
+                self.pose_file = POSE_FILE
+            elif not pose_file.endswith(".txt"):
+                self.pose_file = POSE_DIR + "/" + pose_file + ".txt"
+            else:
+                self.pose_file = POSE_DIR + "/" + pose_file
+
+            self.pose_file = file_utils.open_file(self.pose_file)
+
+
+    def get_true_alt(self):
+	return self.true_alt
 
     def is_marker_found(self):
         return self.marker_found
@@ -88,6 +108,13 @@ class MarkerTracker(VideoStreamer):
         if self.debug:
             self.video_writer.stop()
 
+    # Used for debugging or recording purposes. Saves the pose to a .txt file.
+    def save_pose(self):
+        if self.pose is None:
+            self.pose_file.write("None None None\n")
+        else:
+            self.pose_file.write("{} {} {}\n".format(self.pose[0], self.pose[1], self.pose[2]))
+
     # This is where the marker tracking happens. Various image processing is performed, and if the marker is detected,
     # the pose will be updated and a boolean will be returned.
     @abstractmethod
@@ -109,12 +136,13 @@ class ColorMarkerTracker(MarkerTracker):
     def __init__(self,
                  src=0,
                  use_pi=-1,
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30,
                  marker_length=3.048,
                  debug=0,
                  video_dir=None,
-                 video_file=None):
+                 video_file=None,
+                 pose_file=POSE_FILE):
 
         super(ColorMarkerTracker, self).__init__(src=src,
                                                  use_pi=use_pi,
@@ -123,7 +151,8 @@ class ColorMarkerTracker(MarkerTracker):
                                                  marker_length=marker_length,
                                                  debug=debug,
                                                  video_dir=video_dir,
-                                                 video_file=video_file)
+                                                 video_file=video_file,
+                                                 pose_file=pose_file)
 
         # Below the altitude threshold, dynamic Otsu thresholding is performed on the lightness spectrum
         # in the LAB color space. Above the threshold, binary thresholding is performed. This was determined to be the
@@ -150,6 +179,7 @@ class ColorMarkerTracker(MarkerTracker):
     # left over. The pose is calculated and scaled using the known marker length.
     def track_marker(self, alt=25):
         self.cur_frame = self.read()
+	self.true_alt = alt
 
         # Undistort image to get rid of fisheye distortion
         self.undistort_frame = cv2.undistort(self.cur_frame, self.camera_mat, self.dist_coeffs)
@@ -245,13 +275,16 @@ class ColorMarkerTracker(MarkerTracker):
                     self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
                                                                cX, cY, self.depth, c)
                     self.visualize()
+                    self.save_pose()
 
                 return True
 
         # Debug
+        self.pose = None
         self.marker_found = False
         if self.get_debug():
             self.visualize()
+            self.save_pose()
 
         return False
 
@@ -262,7 +295,7 @@ class ColorMarkerTracker(MarkerTracker):
         else:
             print(self.pose)
 
-        if self.use_rpi:
+        if self.use_pi:
             self.video_writer.write(self.detected_frame)
         else:
             # Reduce all 9 image dimensions so they can be merged together
@@ -331,6 +364,9 @@ class ColorMarkerTracker(MarkerTracker):
         cv2.putText(self.detected_frame, "Distance: {}".format(np.around(depth, 1)), (cX - 40, cY - 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
+	# Draw true altitude
+	cv2.putText(self.detected_frame, "Altitude: {}".format(np.around(self.true_alt, 1)), (cX - 40, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
         # Draw XY error
         cv2.putText(self.detected_frame,
                     "XY Error: {}, {}".format(np.around(self.pose[0], 1), np.around(self.pose[1], 1)),
@@ -368,12 +404,13 @@ class ArucoTracker(MarkerTracker):
     def __init__(self,
                  src=0,
                  use_pi=-1,
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30,
                  marker_length=0.159,
                  debug=0,
                  video_dir=None,
-                 video_file=None):
+                 video_file=None,
+                 pose_file=POSE_FILE):
 
         super(ArucoTracker, self).__init__(src=src,
                                           use_pi=use_pi,
@@ -382,7 +419,8 @@ class ArucoTracker(MarkerTracker):
                                           marker_length=marker_length,
                                           debug=debug,
                                           video_dir=video_dir,
-                                          video_file=video_file)
+                                          video_file=video_file,
+                                          pose_file=pose_file)
 
         # Create aruco dictionary
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
@@ -395,7 +433,6 @@ class ArucoTracker(MarkerTracker):
     def track_marker(self, alt=0):
         # Update current image
         self.cur_frame = self.read()
-
         # Detect the marker
         corners, ids, rejectedImgPoints = aruco.detectMarkers(self.cur_frame, self.aruco_dict,
                                                               parameters=self.aruco_param)
@@ -416,15 +453,21 @@ class ArucoTracker(MarkerTracker):
             # Debug
             self.marker_found = True
             if self.get_debug():
-                aruco.drawDetectedMarkers(self.detected_frame,corners, ids)
+                if self.detected_frame is None:
+                    self.detected_frame = self.cur_frame
+
+                aruco.drawDetectedMarkers(self.detected_frame, corners, ids)
                 self.detected_frame = aruco.drawAxis(self.cur_frame, self.camera_mat, self.dist_coeffs,
                                                      self.rvec, self.pose, 0.1)
                 self.visualize()
+                self.save_pose()
         else:
             # Debug
+            self.pose = None
             self.marker_found = False
             if self.get_debug():
                 self.visualize()
+                self.save_pose()
 
     # Visualize the Aruco marker detection. If on the Pi, only saves a video, since the GUI may not be available.
     def visualize(self):
@@ -451,7 +494,7 @@ class ArucoTracker(MarkerTracker):
                  thickness=5)
         cv2.putText(self.detected_frame,"Y",(self.resolution[0] / 2 - 5, 35), cv2.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0))
 
-        if not self.use_rpi:
+        if not self.use_pi:
             cv2.imshow("Aruco Tracker", self.detected_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
@@ -497,7 +540,5 @@ class ArucoTracker(MarkerTracker):
         w = 2 * self.pose[2] * np.tan(72.5 * pi/180)
         h = 2 * self.pose[2] * np.tan(38.5 * pi/180)
         return np.array([w, h])
-
-
 
 
