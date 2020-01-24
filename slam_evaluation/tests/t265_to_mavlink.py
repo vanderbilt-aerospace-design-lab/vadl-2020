@@ -30,6 +30,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
+from utils import dronekit_utils
 
 #######################################
 # Parameters
@@ -40,7 +41,7 @@ connection_string_default = '/dev/ttyAMA0'
 connection_baudrate_default = 921600
 vision_msg_hz_default = 30
 confidence_msg_hz_default = 1
-camera_orientation_default = 1
+camera_orientation_default = 2
 
 # In NED frame, offset from the IMU or the center of gravity to the camera's origin point
 body_offset_enabled = 0
@@ -52,7 +53,7 @@ body_offset_z = 0       # In meters (m)
 scale_factor = 1.0
 
 # Enable using yaw from compass to align north (zero degree is facing north)
-compass_enabled = 1
+compass_enabled = 0
 
 # Default global position of home/ origin
 #home_lat = 151269321       # Somewhere in Africa
@@ -86,7 +87,6 @@ parser.add_argument('--camera_orientation', type=int,
                     help="Configuration for camera orientation. Currently supported: forward, usb port to the right - 0; downward, usb port to the right - 1")
 parser.add_argument('--debug_enable',type=int,
                     help="Enable debug messages on terminal")
-
 
 args = parser.parse_args()
 
@@ -163,6 +163,16 @@ elif camera_orientation == 1:
     # Downfacing, USB port to the right
     H_aeroRef_T265Ref = np.array([[0,0,-1,0],[1,0,0,0],[0,-1,0,0],[0,0,0,1]])
     H_T265body_aeroBody = np.array([[0,1,0,0],[1,0,0,0],[0,0,-1,0],[0,0,0,1]])
+elif camera_orientation == 2:
+    # Sideways, USB port facing the back, 45 degrees roll
+    H_aeroRef_T265Ref = np.array([[-1,0,0,0],
+                                  [0,0,-1,0],
+                                  [0,-1,0,0],
+                                  [0,0,0,1]])
+    H_T265body_aeroBody = np.array([[-1,0,0,0],
+                                    [0,np.sin(45*(np.pi/180)),-np.cos(45*(np.pi/180)),0],
+                                    [0,-np.cos(45*(np.pi/180)),-np.sin(45*(np.pi/180)),0],
+                                    [0,0,0,1]])
 else: 
     # Default is facing forward, USB port to the right
     H_aeroRef_T265Ref = np.array([[0,0,-1,0],[1,0,0,0],[0,-1,0,0],[0,0,0,1]])
@@ -302,19 +312,6 @@ def att_msg_callback(self, attr_name, value):
         heading_north_yaw = value.yaw
         print("INFO: Received ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
 
-def vehicle_connect():
-    global vehicle
-    
-    try:
-        vehicle = connect(connection_string, wait_ready = True, baud = connection_baudrate, source_system = 1)
-    except:
-        print('Connection error! Retrying...')
-
-    if vehicle == None:
-        return False
-    else:
-        return True
-
 def realsense_connect():
     global pipe
     # Declare RealSense pipeline, encapsulating the actual device and sensors
@@ -335,6 +332,31 @@ def scale_update():
     while True:
         scale_factor = float(input("INFO: Type in new scale as float number\n"))
         print("INFO: New scale is ", scale_factor)  
+      
+# Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
+def trick_compass(old_vehicle):
+    if old_vehicle.parameters['MAG_ENABLE'] == 0 or old_vehicle.parameters['COMPASS_USE'] == 0:
+        # Enable the compass and the EKF's use of it for heading
+        old_vehicle.parameters['COMPASS_USE'] = 1
+        old_vehicle.parameters['MAG_ENABLE'] = 1
+        print("Enabling MAG_ENABLE and COMPASS_USE")
+
+        # Reboot and reconnect to the vehicle
+        vehicle = dronekit_utils.reboot_and_connect(old_vehicle, args)
+
+    # Arm and disarm
+    dronekit_utils.arm_no_failsafe(vehicle)
+    while not vehicle.armed:
+        print("Waiting for arming")
+        time.sleep(1)
+    dronekit_utils.disarm(vehicle)
+
+    # Disable compass parameters; TODO: no reboot required?
+    vehicle.parameters['MAG_ENABLE'] = 0
+    vehicle.parameters['COMPASS_USE'] = 0
+    print("MAG_ENABLE and COMPASS_USE set to 0")
+
+    return vehicle
 
 #######################################
 # Main code starts here
@@ -345,9 +367,12 @@ realsense_connect()
 print("INFO: Realsense connected.")
 
 print("INFO: Connecting to vehicle.")
-while (not vehicle_connect()):
-    pass
+vehicle = dronekit_utils.connect_vehicle()
 print("INFO: Vehicle connected.")
+
+print("INFO: Tricking compass.")
+vehicle = trick_compass(vehicle)
+print("INFO: Compass tricked.")
 
 # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
 vehicle.add_message_listener('STATUSTEXT', statustext_callback)
@@ -380,7 +405,6 @@ if compass_enabled == 1:
     time.sleep(1)
 
 print("INFO: Sending VISION_POSITION_ESTIMATE messages to FCU.")
-
 try:
     while True:
         # Wait for the next set of frames from the camera
@@ -417,7 +441,7 @@ try:
             # Realign heading to face north using initial compass data
             if compass_enabled == 1:
                 H_aeroRef_aeroBody = H_aeroRef_aeroBody.dot( tf.euler_matrix(0, 0, heading_north_yaw, 'sxyz'))
-
+             
             # Show debug messages here
             if debug_enable == 1:
                 os.system('clear') # This helps in displaying the messages to be more readable

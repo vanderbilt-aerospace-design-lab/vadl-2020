@@ -69,7 +69,6 @@ class MarkerTracker(VideoStreamer):
 
             self.pose_file = file_utils.open_file(self.pose_file)
 
-
     def get_true_alt(self):
 	return self.true_alt
 

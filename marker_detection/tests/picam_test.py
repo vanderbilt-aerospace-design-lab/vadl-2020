@@ -21,24 +21,6 @@ if args["name"] is None:
 
 FILE = args["dir"] + "/" + NAME
 
-# Pick resolution
-if args["resolution"] == 1944:
-    args["resolution"] = (2592, 1944)
-if args["resolution"] == 1080:
-    args["resolution"] = (1920, 1080)
-elif args["resolution"] == 972:
-    args["resolution"] = (1296, 972)
-elif args["resolution"] == 730:
-    args["resolution"] = (1296, 730)
-elif args["resolution"] == 480:
-    args["resolution"] = (640, 480)
-elif args["resolution"] == 240:
-    args["resolution"] = (352, 240)
-elif args["resolution"] == 144:
-    args["resolution"] = (256, 144)
-else:
-    args["resolution"] = (64, 64)
-
 # Initialize the camera and grab a reference to the raw camera capture
 camera = PiCamera()
 camera.resolution = args["resolution"]

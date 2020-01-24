@@ -52,6 +52,13 @@ if not isinstance(args["video"], int):
 else:
     VIDEO_FILE_STREAM = 0
 
+if not isinstance(args["video"], int):
+    if not os.path.exists(args["video"]):
+        raise Exception("ERROR: Video file does not exist")
+    VIDEO_FILE_STREAM = args["video"]
+else:
+    VIDEO_FILE_STREAM = 0
+
 def ned_to_body(location_ned, attitude):
     roll_R = tf.rotation_matrix(attitude.roll, (1, 0, 0))[0:3, 0:3]
     pitch_R = tf.rotation_matrix(attitude.pitch, (0, 1, 0))[0:3, 0:3]
@@ -62,6 +69,11 @@ def ned_to_body(location_ned, attitude):
 
     return np.matmul(ned_mat, transform)
 
+    ned_mat = np.array([location_ned.north, location_ned.east, location_ned.down])
+
+    return np.matmul(ned_mat, transform)
+
+>>>>>>> 5298cfb7198d3064d15284d3d9e528bd4c22e0cb
 def marker_hover(vehicle, marker_tracker):
 
     pid = PID(1, 0.1, 0.05, setpoint=0)

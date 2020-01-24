@@ -3,7 +3,9 @@ from dronekit import connect, VehicleMode
 from pymavlink import mavutil
 import time
 
-def connect_vehicle(connection_string):
+CONNECTION_STRING = "/dev/ttyAMA0"
+
+def connect_vehicle(connection_string=CONNECTION_STRING):
     # Connect to the Vehicle
     print("\nConnecting to vehicle on: %s" % connection_string)
 
@@ -12,7 +14,7 @@ def connect_vehicle(connection_string):
     else:
         return connect(connection_string, wait_ready=True, baud=921600)
 
-def connect_vehicle_args(args):
+def connect_vehicle_args(args=None):
     # Start SITL if connection string specified
     if args["sitl"]:
         import dronekit_sitl
@@ -32,10 +34,37 @@ def arm(vehicle):
         print(" Waiting for vehicle to initialise...")
         time.sleep(1)
 
+    # Do not arm until EKF has found its home location
+    wait_for_home_location(vehicle)
+
     print("Arming motors")
     # Copter should arm in GUIDED mode
     vehicle.mode = VehicleMode("GUIDED")
     vehicle.armed = True
+
+def arm_no_failsafe(vehicle):
+    print("Arming motors")
+    vehicle.armed = True
+
+def disarm(vehicle):
+    print("Disarming vehicle")
+    vehicle.armed = False
+
+def reboot(vehicle):
+    print("Rebooting FCU")
+    vehicle.reboot()
+
+def reboot_and_connect(vehicle, args):
+    # Reboot
+    reboot(vehicle)
+    time.sleep(1)
+    vehicle.close()
+
+    # Wait for reboot to finish
+    time.sleep(7)
+
+    # Reconnect
+    return connect_vehicle_args(args)
 
 
 def takeoff(vehicle, aTargetAltitude):
@@ -57,7 +86,6 @@ def takeoff(vehicle, aTargetAltitude):
             print("Reached target altitude")
             break
         time.sleep(1)
-
 
 def land(vehicle):
     print("Landing...")
@@ -84,7 +112,6 @@ def wait_for_home_location(vehicle):
         cmds.wait_ready()
         print("Waiting for home location")
         time.sleep(0.5)
-
 
 def goto_position_target_local_offset_ned(vehicle, north, east, down):
     """
@@ -134,4 +161,25 @@ def goto_position_target_body_offset_ned(vehicle, forward, right, down):
         0, 0)  # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
     # send command to vehicle
     vehicle.send_mavlink(msg)
+
+def send_body_velocity(vehicle, velocity_x, velocity_y, velocity_z, duration):
+    """
+    Move vehicle in direction based on specified velocity vectors.
+    """
+    msg = vehicle.message_factory.set_position_target_local_ned_encode(
+        0,       # time_boot_ms (not used)
+        0, 0,    # target system, target component
+        mavutil.mavlink.MAV_FRAME_LOCAL_NED, # frame
+        0b0000111111000111, # type_mask (only speeds enabled)
+        0, 0, 0, # x, y, z positions (not used)
+        velocity_x, velocity_y, velocity_z, # x, y, z velocity in m/s
+        0, 0, 0, # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
+        0, 0)    # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
+
+    # send command to vehicle on 1 Hz cycle
+    for x in range(0, duration):
+        vehicle.send_mavlink(msg)
+        time.sleep(1)
+
+
 
