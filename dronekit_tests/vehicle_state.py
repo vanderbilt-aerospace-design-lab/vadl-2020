@@ -18,7 +18,7 @@ CONNECTION_STRING = "/dev/ttyAMA0"
 # Connect to the Vehicle.
 #   Set `wait_ready=True` to ensure default attributes are populated before `connect()` returns.
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
-vehicle = connect(CONNECTION_STRING, wait_ready=True)
+vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600)
 
 vehicle.wait_ready('autopilot_version')
 
