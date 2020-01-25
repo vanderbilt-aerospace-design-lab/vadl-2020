@@ -31,13 +31,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
 from utils import dronekit_utils
-from marker_detection.camera import Realsense
 
 #######################################
 # Parameters
 #######################################
 
 # Default configurations for connection to the FCU
+connection_string_default = '/dev/ttyAMA0'
+connection_baudrate_default = 921600
 vision_msg_hz_default = 30
 confidence_msg_hz_default = 1
 camera_orientation_default = 2
@@ -55,7 +56,9 @@ scale_factor = 1.0
 compass_enabled = 0
 
 # Default global position of home/ origin
+#home_lat = 151269321       # Somewhere in Africa
 home_lat = 341613615
+#home_lon = 16624301        # Somewhere in Africa
 home_lon = -1185031700
 home_alt = 163000 
 
@@ -139,7 +142,6 @@ H_T265body_aeroBody = np.array([[-1,0,0,0],
 # Functions
 #######################################
 
-# TODO: Make a MavlinkBackgroundScheduler class to abstract Mavlink message sending
 # https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
 def send_vision_position_message():
     global current_time, H_aeroRef_aeroBody
@@ -190,14 +192,67 @@ def send_confidence_level_dummy_message():
             vehicle.send_mavlink(status_msg)
             vehicle.flush()
 
+
+# Send a mavlink SET_GPS_GLOBAL_ORIGIN message (http://mavlink.org/messages/common#SET_GPS_GLOBAL_ORIGIN), which allows us to use local position information without a GPS.
+def set_default_global_origin():
+    msg = vehicle.message_factory.set_gps_global_origin_encode(
+        int(vehicle._master.source_system),
+        home_lat, 
+        home_lon,
+        home_alt
+    )
+
+    vehicle.send_mavlink(msg)
+    vehicle.flush()
+
+# Send a mavlink SET_HOME_POSITION message (http://mavlink.org/messages/common#SET_HOME_POSITION), which allows us to use local position information without a GPS.
+def set_default_home_position():
+    x = 0
+    y = 0
+    z = 0
+    q = [1, 0, 0, 0]   # w x y z
+
+    approach_x = 0
+    approach_y = 0
+    approach_z = 1
+
+    msg = vehicle.message_factory.set_home_position_encode(
+        int(vehicle._master.source_system),
+        home_lat, 
+        home_lon,
+        home_alt,
+        x,
+        y,
+        z,
+        q,
+        approach_x,
+        approach_y,
+        approach_z
+    )
+
+    vehicle.send_mavlink(msg)
+    vehicle.flush()
+
+# Request a timesync update from the flight controller, for future work.
+# TODO: Inspect the usage of timesync_update 
+def update_timesync(ts=0, tc=0):
+    if ts == 0:
+        ts = int(round(time.time() * 1000))
+    msg = vehicle.message_factory.timesync_encode(
+        tc,     # tc1
+        ts      # ts1
+    )
+    vehicle.send_mavlink(msg)
+    vehicle.flush()
+
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
     # These are the status texts that indicates EKF is ready to receive home position
     if value.text == "GPS Glitch" or value.text == "GPS Glitch cleared" or value.text == "EKF2 IMU1 ext nav yaw alignment complete":
         time.sleep(0.1)
         print("INFO: Set EKF home with default GPS location")
-        dronekit_utils.set_default_global_origin(vehicle, home_lat, home_lon, home_alt)
-        dronekit_utils.set_default_home_position(vehicle, home_lat, home_lon, home_alt)
+        set_default_global_origin()
+        set_default_home_position()
 
 # Listen to attitude data to acquire heading when compass data is enabled
 def att_msg_callback(self, attr_name, value):
@@ -209,6 +264,20 @@ def att_msg_callback(self, attr_name, value):
         heading_north_yaw = value.yaw
         print("INFO: Received ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
 
+def realsense_connect():
+    global pipe
+    # Declare RealSense pipeline, encapsulating the actual device and sensors
+    pipe = rs.pipeline()
+
+    # Build config object before requesting data
+    cfg = rs.config()
+
+    # Enable the stream we are interested in
+    cfg.enable_stream(rs.stream.pose) # Positional data 
+
+    # Start streaming with requested config
+    pipe.start(cfg)
+
 # Monitor user input from the terminal and update scale factor accordingly
 def scale_update():
     global scale_factor
@@ -217,7 +286,6 @@ def scale_update():
         print("INFO: New scale is ", scale_factor)  
       
 # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
-
 def trick_compass(old_vehicle):
     if old_vehicle.parameters['MAG_ENABLE'] == 0 or old_vehicle.parameters['COMPASS_USE'] == 0:
         # Enable the compass and the EKF's use of it for heading
@@ -247,7 +315,7 @@ def trick_compass(old_vehicle):
 #######################################
 
 print("INFO: Connecting to Realsense camera.")
-rs = Realsense()
+realsense_connect()
 print("INFO: Realsense connected.")
 
 print("INFO: Connecting to vehicle.")
@@ -272,6 +340,7 @@ heading_north_yaw = None
 
 # Send MAVlink messages in the background
 sched = BackgroundScheduler()
+
 sched.add_job(send_vision_position_message, 'interval', seconds = 1/vision_msg_hz)
 sched.add_job(send_confidence_level_dummy_message, 'interval', seconds = 1/confidence_msg_hz)
 
@@ -290,13 +359,18 @@ if compass_enabled == 1:
 print("INFO: Sending VISION_POSITION_ESTIMATE messages to FCU.")
 try:
     while True:
+        # Wait for the next set of frames from the camera
+        frames = pipe.wait_for_frames()
 
-        # Obtain pose from the Realsense
-        data = rs.read()
+        # Fetch pose frame
+        pose = frames.get_pose_frame()
 
-        if data:
+        if pose:
             # Store the timestamp for MAVLink messages
             current_time = int(round(time.time() * 1000000))
+
+            # Pose data consists of translation and rotation
+            data = pose.get_pose_data()
 
             # In transformations, Quaternions w+ix+jy+kz are represented as [w, x, y, z]!
             H_T265Ref_T265body = tf.quaternion_matrix([data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z]) 
@@ -332,7 +406,7 @@ except KeyboardInterrupt:
     print("INFO: KeyboardInterrupt has been caught. Cleaning up...")     
 
 finally:
-    rs.stop()
+    pipe.stop()
     vehicle.close()
     print("INFO: Realsense pipeline and vehicle object closed.")
     sys.exit()
