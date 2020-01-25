@@ -2,6 +2,7 @@ from __future__ import print_function
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
 import time
+import numpy as np
 
 CONNECTION_STRING = "/dev/ttyAMA0"
 
@@ -181,5 +182,43 @@ def send_body_velocity(vehicle, velocity_x, velocity_y, velocity_z, duration):
         vehicle.send_mavlink(msg)
         time.sleep(1)
 
+# Send a mavlink SET_GPS_GLOBAL_ORIGIN message (http://mavlink.org/messages/common#SET_GPS_GLOBAL_ORIGIN), which allows us to use local position information without a GPS.
+def set_default_global_origin(vehicle, home_lat, home_lon, home_alt):
+    msg = vehicle.message_factory.set_gps_global_origin_encode(
+        int(vehicle._master.source_system),
+        home_lat,
+        home_lon,
+        home_alt
+    )
 
+    vehicle.send_mavlink(msg)
+    vehicle.flush()
+
+# Send a mavlink SET_HOME_POSITION message (http://mavlink.org/messages/common#SET_HOME_POSITION), which allows us to use local position information without a GPS.
+def set_default_home_position(vehicle, home_lat, home_lon, home_alt):
+    x = 0
+    y = 0
+    z = 0
+    q = [1, 0, 0, 0]   # w x y z
+
+    approach_x = 0
+    approach_y = 0
+    approach_z = 1
+
+    msg = vehicle.message_factory.set_home_position_encode(
+        int(vehicle._master.source_system),
+        home_lat,
+        home_lon,
+        home_alt,
+        x,
+        y,
+        z,
+        q,
+        approach_x,
+        approach_y,
+        approach_z
+    )
+
+    vehicle.send_mavlink(msg)
+    vehicle.flush()
 
