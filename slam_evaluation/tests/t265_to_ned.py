@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/usr/local/lib")
 import os
 # Import the libraries
 import pyrealsense2 as rs
@@ -7,7 +9,6 @@ import math as m
 import time
 import argparse
 from marker_detection.camera import Realsense
-import sys
 
 #######################################
 # Parameters
@@ -44,13 +45,18 @@ debug_enable = args.debug_enable
 
 # Sideways, USB port facing the back, 45 degrees roll
 H_aeroRef_T265Ref = np.array([[-1, 0, 0, 0],
-                              [0, 0, -1, 0],
-                              [0, -1, 0, 0],
+                              [0, 0, 1, 0],
+                              [0, 1, 0, 0],
                               [0, 0, 0, 1]])
-H_T265body_aeroBody = np.array([[-1, 0, 0, 0],
-                                [0, np.sin(41 * (np.pi / 180)), -np.cos(41 * (np.pi / 180)), 0],
-                                [0, -np.cos(41 * (np.pi / 180)), -np.sin(41 * (np.pi / 180)), 0],
-                                [0, 0, 0, 1]])
+angle_x = 40
+angle_z = 180
+H_T265body_aeroBody = tf.quaternion_about_axis(angle_x, (1, 0, 0))
+#H_T265body_aeroBody = tf.rotation_matrix(angle_x, (-1, 0, 0))
+print(H_T265body_aeroBody)
+#H_T265body_aeroBody = np.array([[1, 0, 0, 0],
+ #                               [0, -np.sin(40 * (np.pi / 180)), np.cos(40 * (np.pi / 180)), 0],
+  #                              [0, -np.cos(40 * (np.pi / 180)), -np.sin(40 * (np.pi / 180)), 0],
+   #                             [0, 0, 0, 1]])
 
 if not debug_enable:
     debug_enable = 0
@@ -83,7 +89,8 @@ try:
             H_T265Ref_T265body[2][3] = data.translation.z * scale_factor
 
             # Transform to aeronautic coordinates (body AND reference frame!)
-            H_aeroRef_aeroBody = H_aeroRef_T265Ref.dot(H_T265Ref_T265body.dot(H_T265body_aeroBody))
+           # H_aeroRef_aeroBody = H_aeroRef_T265Ref.dot(H_T265Ref_T265body.dot(H_T265body_aeroBody))
+            H_aeroRef_aeroBody = H_T265Ref_T265body.dot(H_T265body_aeroBody)
 
             # Take offsets from body's center of gravity (or IMU) to camera's origin into account
             if body_offset_enabled == 1:
