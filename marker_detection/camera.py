@@ -194,9 +194,10 @@ class Realsense(Camera):
 
         return pipe
 
-    # Returns the pose as a np array
-    # Currently returns pose since this is most frequently needed value
-    # May change to be more versatile at a later point
+    # Returns a realsense data object
+    # includes pose and quaternions, accessed as:
+    # data.translation.x, data.translation.y, data.translation.z
+    # data.rotation.w, data.rotation.etc.
     def read(self):
         # Wait for frames
         frames = self.pipe.wait_for_frames()
@@ -208,24 +209,32 @@ class Realsense(Camera):
 
             # Pose data consists of translation and rotation
             self.pose_object = self.data.get_pose_data()
+            return self.pose_object
 
-            self.pose = np.array([self.pose_object.translation.x,
-                                  self.pose_object.translation.y,
-                                  self.pose_object.translation.z])
-
-            self.quaternion = np.array([self.pose_object.rotation.w,
-                                        self.pose_object.rotation.x,
-                                        self.pose_object.rotation.y,
-                                        self.pose_object.rotation.z])
-            return self.pose
+        else:
+            # TODO: Implement behavior for when pose is not returned
+            # TODO: Determine if this is ever even the case
+            return False
 
     def is_tracking(self):
         return self.data
+
+    def read_pose(self):
+        self.read()
+        self.pose = np.array([self.pose_object.translation.x,
+                              self.pose_object.translation.y,
+                              self.pose_object.translation.z])
+
+        return self.pose
 
     def get_pose(self):
         return self.pose
 
     def get_quaternion(self):
+        self.quaternion = np.array([self.pose_object.rotation.w,
+                                    self.pose_object.rotation.x,
+                                    self.pose_object.rotation.y,
+                                    self.pose_object.rotation.z])
         return self.quaternion
 
     # Terminate the capture thread.

@@ -31,17 +31,15 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
 from utils import dronekit_utils
+from marker_detection.camera import Realsense
 
 #######################################
 # Parameters
 #######################################
 
 # Default configurations for connection to the FCU
-connection_string_default = '/dev/ttyAMA0'
-connection_baudrate_default = 921600
 vision_msg_hz_default = 30
 confidence_msg_hz_default = 1
-camera_orientation_default = 2
 
 # In NED frame, offset from the IMU or the center of gravity to the camera's origin point
 body_offset_enabled = 0
@@ -56,9 +54,7 @@ scale_factor = 1.0
 compass_enabled = 0
 
 # Default global position of home/ origin
-#home_lat = 151269321       # Somewhere in Africa
 home_lat = 341613615
-#home_lon = 16624301        # Somewhere in Africa
 home_lon = -1185031700
 home_alt = 163000 
 
@@ -73,135 +69,113 @@ pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
 #######################################
 
 parser = argparse.ArgumentParser(description='Reboots vehicle')
-parser.add_argument('--connect',
-                    help="Vehicle connection target string. If not specified, a default string will be used.")
-parser.add_argument('--baudrate', type=float,
-                    help="Vehicle connection baudrate. If not specified, a default value will be used.")
 parser.add_argument('--vision_msg_hz', type=float,
                     help="Update frequency for VISION_POSITION_ESTIMATE message. If not specified, a default value will be used.")
 parser.add_argument('--confidence_msg_hz', type=float,
                     help="Update frequency for confidence level. If not specified, a default value will be used.")
 parser.add_argument('--scale_calib_enable', type=bool,
                     help="Scale calibration. Only run while NOT in flight")
-parser.add_argument('--camera_orientation', type=int,
-                    help="Configuration for camera orientation. Currently supported: forward, usb port to the right - 0; downward, usb port to the right - 1")
 parser.add_argument('--debug_enable',type=int,
                     help="Enable debug messages on terminal")
 
 args = parser.parse_args()
 
-connection_string = args.connect
-connection_baudrate = args.baudrate
 vision_msg_hz = args.vision_msg_hz
 confidence_msg_hz = args.confidence_msg_hz
 scale_calib_enable = args.scale_calib_enable
-camera_orientation = args.camera_orientation
 debug_enable = args.debug_enable
-
-# Using default values if no specified inputs
-if not connection_string:
-    connection_string = connection_string_default
-    print("INFO: Using default connection_string", connection_string)
-else:
-    print("INFO: Using connection_string", connection_string)
-
-if not connection_baudrate:
-    connection_baudrate = connection_baudrate_default
-    print("INFO: Using default connection_baudrate", connection_baudrate)
-else:
-    print("INFO: Using connection_baudrate", connection_baudrate)
 
 if not vision_msg_hz:
     vision_msg_hz = vision_msg_hz_default
     print("INFO: Using default vision_msg_hz", vision_msg_hz)
 else:
     print("INFO: Using vision_msg_hz", vision_msg_hz)
-    
 if not confidence_msg_hz:
     confidence_msg_hz = confidence_msg_hz_default
     print("INFO: Using default confidence_msg_hz", confidence_msg_hz)
 else:
     print("INFO: Using confidence_msg_hz", confidence_msg_hz)
-
 if body_offset_enabled == 1:
     print("INFO: Using camera position offset: Enabled, x y z is", body_offset_x, body_offset_y, body_offset_z)
 else:
     print("INFO: Using camera position offset: Disabled")
-
 if compass_enabled == 1:
     print("INFO: Using compass: Enabled. Heading will be aligned to north.")
 else:
     print("INFO: Using compass: Disabled")
-
-if scale_calib_enable == True:
+if scale_calib_enable:
     print("\nINFO: SCALE CALIBRATION PROCESS. DO NOT RUN DURING FLIGHT.\nINFO: TYPE IN NEW SCALE IN FLOATING POINT FORMAT\n")
 else:
     if scale_factor == 1.0:
         print("INFO: Using default scale factor", scale_factor)
     else:
         print("INFO: Using scale factor", scale_factor)
-
-if not camera_orientation:
-    camera_orientation = camera_orientation_default
-    print("INFO: Using default camera orientation", camera_orientation)
-else:
-    print("INFO: Using camera orientation", camera_orientation)
-
-# Transformation to convert different camera orientations to NED convention. Replace camera_orientation_default for your configuration.
-#   0: Forward, USB port to the right
-#   1: Downfacing, USB port to the right 
-# Important note for downfacing camera: you need to tilt the vehicle's nose up a little - not flat - before you run the script, otherwise the initial yaw will be randomized, read here for more details: https://github.com/IntelRealSense/librealsense/issues/4080. Tilt the vehicle to any other sides and the yaw might not be as stable.
-
-if camera_orientation == 0: 
-    # Forward, USB port to the right
-    H_aeroRef_T265Ref = np.array([[0,0,-1,0],
-                                  [1,0,0,0],
-                                  [0,-1,0,0],
-                                  [0,0,0,1]])
-    H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
-elif camera_orientation == 1:
-    # Downfacing, USB port to the right
-    H_aeroRef_T265Ref = np.array([[0,0,-1,0],[1,0,0,0],[0,-1,0,0],[0,0,0,1]])
-    H_T265body_aeroBody = np.array([[0,1,0,0],[1,0,0,0],[0,0,-1,0],[0,0,0,1]])
-elif camera_orientation == 2:
-    # Sideways, USB port facing the back, 45 degrees roll
-    H_aeroRef_T265Ref = np.array([[-1,0,0,0],
-                                  [0,0,-1,0],
-                                  [0,-1,0,0],
-                                  [0,0,0,1]])
-    H_T265body_aeroBody = np.array([[-1,0,0,0],
-                                    [0,np.sin(45*(np.pi/180)),-np.cos(45*(np.pi/180)),0],
-                                    [0,-np.cos(45*(np.pi/180)),-np.sin(45*(np.pi/180)),0],
-                                    [0,0,0,1]])
-else: 
-    # Default is facing forward, USB port to the right
-    H_aeroRef_T265Ref = np.array([[0,0,-1,0],[1,0,0,0],[0,-1,0,0],[0,0,0,1]])
-    H_T265body_aeroBody = np.linalg.inv(H_aeroRef_T265Ref)
-
-
 if not debug_enable:
     debug_enable = 0
 else:
     debug_enable = 1
-    np.set_printoptions(precision=4, suppress=True) # Format output on terminal 
+    np.set_printoptions(precision=4, suppress=True) # Format output on terminal
     print("INFO: Debug messages enabled.")
+
+''' Realsense to NED pose transform
+0: NED Origin
+1: RS Origin
+2: NED Frame
+3: RS Frame
+
+H2_0: NED Frame rel. to NED origin (pose sent to Pixhawk)
+H0_1: RS Origin rel. to NED Origin
+H1_3: RS Frame rel. to RS Origin (pose received from Realsense)
+H3_2: NED Frame rel. to RS Frame
+
+H0_2 = H0_1.dot(H1_3).dot(H3_2)
+
+H3_2 = H3_A.dot(HA_B).dot(HB_2)
+Broken up into a 180 deg. flip about z (A), 45 deg rotation about x (B) and 
+left hand to right hand coord. system change.
+'''
+
+H0_1 = np.array([[1, 0, 0, 0],
+                 [0, 0, 1, 0],
+                 [0, -1, 0, 0],
+                 [0, 0, 0, 1]])
+
+HA_3 = np.array([[-1, 0, 0, 0],
+                 [0, -1, 0, 0],
+                 [0, 0, 1, 0],
+                 [0, 0, 0, 1]])
+H3_A = tf.inverse_matrix(HA_3)
+
+HA_B = np.array([[1, 0, 0, 0],
+                 [0, np.cos(40*np.pi / 180), -np.sin(40*np.pi / 180), 0],
+                 [0, np.sin(40*np.pi / 180), np.cos(40*np.pi / 180), 0],
+                 [0, 0, 0, 1]])
+
+HB_2 = np.array([[1, 0, 0, 0],
+                 [0, 0, -1, 0],
+                 [0, 1, 0, 0],
+                 [0, 0, 0, 1]])
+
+H3_2 = H3_A.dot(HA_B).dot(HB_2)
+
 
 #######################################
 # Functions
 #######################################
 
+# TODO: Make a MavlinkBackgroundScheduler class to abstract Mavlink message sending
 # https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
 def send_vision_position_message():
-    global current_time, H_aeroRef_aeroBody
+    global current_time, H0_2
 
-    if H_aeroRef_aeroBody is not None:
-        rpy_rad = np.array( tf.euler_from_matrix(H_aeroRef_aeroBody, 'sxyz'))
+    if H0_2 is not None:
+        rpy_rad = np.array( tf.euler_from_matrix(H0_2, 'sxyz'))
 
         msg = vehicle.message_factory.vision_position_estimate_encode(
             current_time,                       # us Timestamp (UNIX time or time since system boot)
-            H_aeroRef_aeroBody[0][3],	        # Global X position
-            H_aeroRef_aeroBody[1][3],           # Global Y position
-            H_aeroRef_aeroBody[2][3],	        # Global Z position
+            H0_2[0][3],	        # Global X position
+            H0_2[1][3],           # Global Y position
+            H0_2[2][3],	        # Global Z position
             rpy_rad[0],	                        # Roll angle
             rpy_rad[1],	                        # Pitch angle
             rpy_rad[2]	                        # Yaw angle
@@ -240,67 +214,14 @@ def send_confidence_level_dummy_message():
             vehicle.send_mavlink(status_msg)
             vehicle.flush()
 
-
-# Send a mavlink SET_GPS_GLOBAL_ORIGIN message (http://mavlink.org/messages/common#SET_GPS_GLOBAL_ORIGIN), which allows us to use local position information without a GPS.
-def set_default_global_origin():
-    msg = vehicle.message_factory.set_gps_global_origin_encode(
-        int(vehicle._master.source_system),
-        home_lat, 
-        home_lon,
-        home_alt
-    )
-
-    vehicle.send_mavlink(msg)
-    vehicle.flush()
-
-# Send a mavlink SET_HOME_POSITION message (http://mavlink.org/messages/common#SET_HOME_POSITION), which allows us to use local position information without a GPS.
-def set_default_home_position():
-    x = 0
-    y = 0
-    z = 0
-    q = [1, 0, 0, 0]   # w x y z
-
-    approach_x = 0
-    approach_y = 0
-    approach_z = 1
-
-    msg = vehicle.message_factory.set_home_position_encode(
-        int(vehicle._master.source_system),
-        home_lat, 
-        home_lon,
-        home_alt,
-        x,
-        y,
-        z,
-        q,
-        approach_x,
-        approach_y,
-        approach_z
-    )
-
-    vehicle.send_mavlink(msg)
-    vehicle.flush()
-
-# Request a timesync update from the flight controller, for future work.
-# TODO: Inspect the usage of timesync_update 
-def update_timesync(ts=0, tc=0):
-    if ts == 0:
-        ts = int(round(time.time() * 1000))
-    msg = vehicle.message_factory.timesync_encode(
-        tc,     # tc1
-        ts      # ts1
-    )
-    vehicle.send_mavlink(msg)
-    vehicle.flush()
-
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
     # These are the status texts that indicates EKF is ready to receive home position
     if value.text == "GPS Glitch" or value.text == "GPS Glitch cleared" or value.text == "EKF2 IMU1 ext nav yaw alignment complete":
         time.sleep(0.1)
         print("INFO: Set EKF home with default GPS location")
-        set_default_global_origin()
-        set_default_home_position()
+        dronekit_utils.set_default_global_origin(vehicle, home_lat, home_lon, home_alt)
+        dronekit_utils.set_default_home_position(vehicle, home_lat, home_lon, home_alt)
 
 # Listen to attitude data to acquire heading when compass data is enabled
 def att_msg_callback(self, attr_name, value):
@@ -312,20 +233,6 @@ def att_msg_callback(self, attr_name, value):
         heading_north_yaw = value.yaw
         print("INFO: Received ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
 
-def realsense_connect():
-    global pipe
-    # Declare RealSense pipeline, encapsulating the actual device and sensors
-    pipe = rs.pipeline()
-
-    # Build config object before requesting data
-    cfg = rs.config()
-
-    # Enable the stream we are interested in
-    cfg.enable_stream(rs.stream.pose) # Positional data 
-
-    # Start streaming with requested config
-    pipe.start(cfg)
-
 # Monitor user input from the terminal and update scale factor accordingly
 def scale_update():
     global scale_factor
@@ -334,6 +241,7 @@ def scale_update():
         print("INFO: New scale is ", scale_factor)  
       
 # Code to TRICK THE DUMBASS ARDUCOPTER DEV CODE
+
 def trick_compass(old_vehicle):
     if old_vehicle.parameters['MAG_ENABLE'] == 0 or old_vehicle.parameters['COMPASS_USE'] == 0:
         # Enable the compass and the EKF's use of it for heading
@@ -363,16 +271,16 @@ def trick_compass(old_vehicle):
 #######################################
 
 print("INFO: Connecting to Realsense camera.")
-realsense_connect()
+rs = Realsense()
 print("INFO: Realsense connected.")
 
 print("INFO: Connecting to vehicle.")
 vehicle = dronekit_utils.connect_vehicle()
 print("INFO: Vehicle connected.")
 
-print("INFO: Tricking compass.")
+# print("INFO: Tricking compass.")
 #vehicle = trick_compass(vehicle)
-print("INFO: Compass tricked.")
+# print("INFO: Compass tricked.")
 
 # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
 vehicle.add_message_listener('STATUSTEXT', statustext_callback)
@@ -388,7 +296,6 @@ heading_north_yaw = None
 
 # Send MAVlink messages in the background
 sched = BackgroundScheduler()
-
 sched.add_job(send_vision_position_message, 'interval', seconds = 1/vision_msg_hz)
 sched.add_job(send_confidence_level_dummy_message, 'interval', seconds = 1/confidence_msg_hz)
 
@@ -407,27 +314,23 @@ if compass_enabled == 1:
 print("INFO: Sending VISION_POSITION_ESTIMATE messages to FCU.")
 try:
     while True:
-        # Wait for the next set of frames from the camera
-        frames = pipe.wait_for_frames()
 
-        # Fetch pose frame
-        pose = frames.get_pose_frame()
+        # Obtain pose from the Realsense
+        data = rs.read()
 
-        if pose:
+        if data:
             # Store the timestamp for MAVLink messages
             current_time = int(round(time.time() * 1000000))
 
-            # Pose data consists of translation and rotation
-            data = pose.get_pose_data()
-
             # In transformations, Quaternions w+ix+jy+kz are represented as [w, x, y, z]!
-            H_T265Ref_T265body = tf.quaternion_matrix([data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z]) 
-            H_T265Ref_T265body[0][3] = data.translation.x * scale_factor
-            H_T265Ref_T265body[1][3] = data.translation.y * scale_factor
-            H_T265Ref_T265body[2][3] = data.translation.z * scale_factor
+            H1_3 = tf.quaternion_matrix(
+                [data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z])
+            H1_3[0][3] = data.translation.x * scale_factor
+            H1_3[1][3] = data.translation.y * scale_factor
+            H1_3[2][3] = data.translation.z * scale_factor
 
             # Transform to aeronautic coordinates (body AND reference frame!)
-            H_aeroRef_aeroBody = H_aeroRef_T265Ref.dot( H_T265Ref_T265body.dot( H_T265body_aeroBody))
+            H0_2 = (H0_1.dot(H1_3)).dot(H3_2)
 
             # Take offsets from body's center of gravity (or IMU) to camera's origin into account
             if body_offset_enabled == 1:
@@ -436,25 +339,24 @@ try:
                 H_body_camera[1][3] = body_offset_y
                 H_body_camera[2][3] = body_offset_z
                 H_camera_body = np.linalg.inv(H_body_camera)
-                H_aeroRef_aeroBody = H_body_camera.dot(H_aeroRef_aeroBody.dot(H_camera_body))
+                H0_2 = H_body_camera.dot(H0_2.dot(H_camera_body))
 
-            # Realign heading to face north using initial compass data
-            if compass_enabled == 1:
-                H_aeroRef_aeroBody = H_aeroRef_aeroBody.dot( tf.euler_matrix(0, 0, heading_north_yaw, 'sxyz'))
-             
             # Show debug messages here
             if debug_enable == 1:
-                os.system('clear') # This helps in displaying the messages to be more readable
-                print("DEBUG: Raw RPY[deg]: {}".format( np.array( tf.euler_from_matrix( H_T265Ref_T265body, 'sxyz')) * 180 / m.pi))
-                print("DEBUG: NED RPY[deg]: {}".format( np.array( tf.euler_from_matrix( H_aeroRef_aeroBody, 'sxyz')) * 180 / m.pi))
-                print("DEBUG: Raw pos xyz : {}".format( np.array( [data.translation.x, data.translation.y, data.translation.z])))
-                print("DEBUG: NED pos xyz : {}".format( np.array( tf.translation_from_matrix( H_aeroRef_aeroBody))))
+                os.system('clear')  # This helps in displaying the messages to be more readable
+                print("DEBUG: Raw RPY[deg]: {}".format(
+                    np.array(tf.euler_from_matrix(H1_3, 'sxyz')) * 180 / m.pi))
+                print("DEBUG: NED RPY[deg]: {}".format(
+                    np.array(tf.euler_from_matrix(H0_2, 'sxyz')) * 180 / m.pi))
+                print("DEBUG: Raw pos xyz : {}".format(
+                    np.array([data.translation.x, data.translation.y, data.translation.z])))
+                print("DEBUG: NED pos xyz : {}".format(np.array(tf.translation_from_matrix(H0_2))))
                 
 except KeyboardInterrupt:
     print("INFO: KeyboardInterrupt has been caught. Cleaning up...")     
 
 finally:
-    pipe.stop()
+    rs.stop()
     vehicle.close()
     print("INFO: Realsense pipeline and vehicle object closed.")
     sys.exit()
