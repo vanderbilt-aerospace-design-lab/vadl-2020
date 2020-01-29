@@ -371,7 +371,7 @@ vehicle = dronekit_utils.connect_vehicle()
 print("INFO: Vehicle connected.")
 
 print("INFO: Tricking compass.")
-vehicle = trick_compass(vehicle)
+#vehicle = trick_compass(vehicle)
 print("INFO: Compass tricked.")
 
 # Listen to the mavlink messages that will be used as trigger to set EKF home automatically

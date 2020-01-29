@@ -6,9 +6,13 @@ import datetime
 import time
 import numpy as np
 import pyrealsense2 as rs
+import os
+from utils import file_utils
 
 # specify as relative or absolute
-VIDEO_DIR = "marker_detection/videos"
+VIDEO_DIR = os.path.abspath("../videos")
+# unnamed video will be named with datetime
+VIDEO_NAME = file_utils.create_file_name_date()
 
 ''' Camera Class
     This high-level class retains camera parameters, such as resolution and frame rate. It also keeps track of 
@@ -36,7 +40,9 @@ class Camera(object):
     def set_resolution(self,resolution):
         if resolution == 1944:
             self.resolution = (2592, 1944)
-        if resolution == 1080:
+        elif resolution == 1088:
+            self.resolution = (1920, 1088)
+        elif resolution == 1080:
             self.resolution = (1920, 1080)
         elif resolution == 972:
             self.resolution = (1296, 972)
@@ -113,7 +119,7 @@ class VideoStreamer(Camera):
 '''
 class VideoWriter(Camera):
     def __init__(self,
-                 video_dir=VIDEO_DIR,
+                 video_dir=None,
                  video_file=None,
                  ext=".avi",
                  resolution=480,
