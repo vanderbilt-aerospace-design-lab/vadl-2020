@@ -54,9 +54,11 @@ scale_factor = 1.0
 compass_enabled = 0
 
 # Default global position of home/ origin
-home_lat = 341613615
-home_lon = -1185031700
-home_alt = 163000 
+#home_lat = 341613615
+home_lat = 0
+home_lon = 0
+#home_lon = -1185031700
+home_alt = 0 #TODO: Set to 0? 
 
 vehicle = None
 pipe = None
@@ -296,8 +298,6 @@ heading_north_yaw = None
 
 # Send MAVlink messages in the background
 sched = BackgroundScheduler()
-print(vision_msg_hz)
-print(1/vision_msg_hz)
 sched.add_job(send_vision_position_message, 'interval', seconds = 1/vision_msg_hz)
 sched.add_job(send_confidence_level_dummy_message, 'interval', seconds = 1/confidence_msg_hz)
 
@@ -342,6 +342,15 @@ try:
                 H_body_camera[2][3] = body_offset_z
                 H_camera_body = np.linalg.inv(H_body_camera)
                 H0_2 = H_body_camera.dot(H0_2.dot(H_camera_body))
+
+            #cmds = vehicle.commands
+            #cmds.download()
+            #cmds.wait_ready()
+
+            print("Altitude (g): %s" % vehicle.location.global_frame.alt)
+            print("Altitude (gr): %s" % vehicle.location.global_relative_frame.alt)
+            print("Altitude (l): %s" % vehicle.location.local_frame.down)
+            print("Home Location: %s" % vehicle.home_location)
 
             # Show debug messages here
             if debug_enable == 1:
