@@ -30,8 +30,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
-from utils import dronekit_utils
+from utils import dronekit_utils, file_utils
 from marker_detection.camera import Realsense
+
+DATA_DIR = "./slam_evaluation/data"
+RS_FILE_BASE = "rs_pose"
+RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
+# pose files to save to
+rs_pose_file = file_utils.open_file(RS_POSE_FILE)
 
 #######################################
 # Parameters
@@ -351,6 +357,22 @@ try:
             print("Altitude (gr): %s" % vehicle.location.global_relative_frame.alt)
             print("Altitude (l): %s" % vehicle.location.local_frame.down)
             print("Home Location: %s" % vehicle.home_location)
+            
+            # Record time
+            timestamp = time.time() - start_time
+            
+            # Convert to NED & Euler for data logging
+            pose_ned = np.array(tf.translation_from_matrix(H0_2))
+            rpy_ned = np.array(tf.euler_from_matrix(H0_2, 'sxyz')) * 180 / m.pi
+
+            # Write to file
+            rs_pose_file.write(str(timestamp) + " " +
+                               str(pose_ned[0]) + " " +
+                               str(pose_ned[1]) + " " +
+                               str(pose_ned[2]) + " " +
+                               str(rpy_ned[0]) + " " +
+                               str(rpy_ned[1]) + " " +
+                               str(rpy_ned[2]) + "\n")
 
             # Show debug messages here
             if debug_enable == 1:
@@ -362,7 +384,7 @@ try:
                 print("DEBUG: Raw pos xyz : {}".format(
                     np.array([data.translation.x, data.translation.y, data.translation.z])))
                 print("DEBUG: NED pos xyz : {}".format(np.array(tf.translation_from_matrix(H0_2))))
-                
+
 except KeyboardInterrupt:
     print("INFO: KeyboardInterrupt has been caught. Cleaning up...")     
 
