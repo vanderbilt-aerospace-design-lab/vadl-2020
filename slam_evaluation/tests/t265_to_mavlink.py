@@ -38,7 +38,7 @@ from marker_detection.camera import Realsense
 #######################################
 
 # Default configurations for connection to the FCU
-vision_msg_hz_default = 30
+vision_msg_hz_default = 30.0
 confidence_msg_hz_default = 1
 
 # In NED frame, offset from the IMU or the center of gravity to the camera's origin point
@@ -296,6 +296,8 @@ heading_north_yaw = None
 
 # Send MAVlink messages in the background
 sched = BackgroundScheduler()
+print(vision_msg_hz)
+print(1/vision_msg_hz)
 sched.add_job(send_vision_position_message, 'interval', seconds = 1/vision_msg_hz)
 sched.add_job(send_confidence_level_dummy_message, 'interval', seconds = 1/confidence_msg_hz)
 
