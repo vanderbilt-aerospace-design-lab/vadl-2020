@@ -14,7 +14,6 @@ file_utils.make_dir(POSE_DIR)
 POSE_FILE = POSE_DIR + "/" + file_utils.create_file_name_date() + ".txt" # Default pose file name
 
 ''' Marker Tracker Classes
-
     These classes are used to track a marker using a single camera. They maintain various image and marker data, and
     can be used to retrieve the pose relative to the camera. Each class is used to detect a different kind of marker.
     The classes are derived from the VideoStreamer class, which is used to retrieve images from a camera or video file 
@@ -28,7 +27,7 @@ class MarkerTracker(VideoStreamer):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
-                 marker_length=0.159,
+                 marker_length=3.05,
                  debug=0,
                  video_dir=None,
                  video_file=None,
@@ -45,6 +44,7 @@ class MarkerTracker(VideoStreamer):
         self.detected_frame = None # Store visual information about the marker
         self.scale_factor = None
         self.debug = debug
+	self.true_alt = 0
 
         # Load camera calibration parameters
         self.camera_mat, self.dist_coeffs = file_utils.load_yaml(os.path.abspath(CALIBRATION_FILE))
@@ -69,6 +69,8 @@ class MarkerTracker(VideoStreamer):
 
             self.pose_file = file_utils.open_file(self.pose_file)
 
+    def get_true_alt(self):
+	return self.true_alt
 
     def is_marker_found(self):
         return self.marker_found
@@ -176,6 +178,7 @@ class ColorMarkerTracker(MarkerTracker):
     # left over. The pose is calculated and scaled using the known marker length.
     def track_marker(self, alt=25):
         self.cur_frame = self.read()
+	self.true_alt = alt
 
         # Undistort image to get rid of fisheye distortion
         self.undistort_frame = cv2.undistort(self.cur_frame, self.camera_mat, self.dist_coeffs)
@@ -360,6 +363,9 @@ class ColorMarkerTracker(MarkerTracker):
         cv2.putText(self.detected_frame, "Distance: {}".format(np.around(depth, 1)), (cX - 40, cY - 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
+	# Draw true altitude
+	cv2.putText(self.detected_frame, "Altitude: {}".format(np.around(self.true_alt, 1)), (cX - 40, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
         # Draw XY error
         cv2.putText(self.detected_frame,
                     "XY Error: {}, {}".format(np.around(self.pose[0], 1), np.around(self.pose[1], 1)),
@@ -534,7 +540,5 @@ class ArucoTracker(MarkerTracker):
         w = 2 * self.pose[2] * np.tan(72.5 * pi/180)
         h = 2 * self.pose[2] * np.tan(38.5 * pi/180)
         return np.array([w, h])
-
-
 
 

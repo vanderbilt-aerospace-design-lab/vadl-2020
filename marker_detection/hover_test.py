@@ -1,4 +1,4 @@
-''' Flight landing script
+    ''' Flight landing script
     Goal is to takeoff, fly to a set altitude,
     switch to tracking mode, and maintain a
     hover over the marker. Manual override always available. '''
@@ -69,6 +69,11 @@ def ned_to_body(location_ned, attitude):
 
     return np.matmul(ned_mat, transform)
 
+    ned_mat = np.array([location_ned.north, location_ned.east, location_ned.down])
+
+    return np.matmul(ned_mat, transform)
+
+>>>>>>> 5298cfb7198d3064d15284d3d9e528bd4c22e0cb
 def marker_hover(vehicle, marker_tracker):
 
     pid = PID(1, 0.1, 0.05, setpoint=0)

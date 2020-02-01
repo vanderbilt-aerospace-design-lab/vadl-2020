@@ -30,17 +30,22 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from dronekit import connect, VehicleMode
 from pymavlink import mavutil
-from utils import dronekit_utils
+from utils import dronekit_utils, file_utils
 from marker_detection.camera import Realsense
+
+DATA_DIR = "./slam_evaluation/data"
+RS_FILE_BASE = "rs_pose"
+RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
+# pose files to save to
+rs_pose_file = file_utils.open_file(RS_POSE_FILE)
 
 #######################################
 # Parameters
 #######################################
 
 # Default configurations for connection to the FCU
-vision_msg_hz_default = 30
+vision_msg_hz_default = 30.0
 confidence_msg_hz_default = 1
-camera_orientation_default = 2
 
 # In NED frame, offset from the IMU or the center of gravity to the camera's origin point
 body_offset_enabled = 0
@@ -55,9 +60,11 @@ scale_factor = 1.0
 compass_enabled = 0
 
 # Default global position of home/ origin
-home_lat = 341613615
-home_lon = -1185031700
-home_alt = 163000 
+#home_lat = 341613615
+home_lat = 0
+home_lon = 0
+#home_lon = -1185031700
+home_alt = 0 #TODO: Set to 0? 
 
 vehicle = None
 pipe = None
@@ -70,10 +77,6 @@ pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
 #######################################
 
 parser = argparse.ArgumentParser(description='Reboots vehicle')
-parser.add_argument('--connect',
-                    help="Vehicle connection target string. If not specified, a default string will be used.")
-parser.add_argument('--baudrate', type=float,
-                    help="Vehicle connection baudrate. If not specified, a default value will be used.")
 parser.add_argument('--vision_msg_hz', type=float,
                     help="Update frequency for VISION_POSITION_ESTIMATE message. If not specified, a default value will be used.")
 parser.add_argument('--confidence_msg_hz', type=float,
@@ -85,12 +88,9 @@ parser.add_argument('--debug_enable',type=int,
 
 args = parser.parse_args()
 
-connection_string = args.connect
-connection_baudrate = args.baudrate
 vision_msg_hz = args.vision_msg_hz
 confidence_msg_hz = args.confidence_msg_hz
 scale_calib_enable = args.scale_calib_enable
-camera_orientation = args.camera_orientation
 debug_enable = args.debug_enable
 
 if not vision_msg_hz:
@@ -174,16 +174,16 @@ H3_2 = H3_A.dot(HA_B).dot(HB_2)
 # TODO: Make a MavlinkBackgroundScheduler class to abstract Mavlink message sending
 # https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
 def send_vision_position_message():
-    global current_time, H_aeroRef_aeroBody
+    global current_time, H0_2
 
-    if H_aeroRef_aeroBody is not None:
-        rpy_rad = np.array( tf.euler_from_matrix(H_aeroRef_aeroBody, 'sxyz'))
+    if H0_2 is not None:
+        rpy_rad = np.array( tf.euler_from_matrix(H0_2, 'sxyz'))
 
         msg = vehicle.message_factory.vision_position_estimate_encode(
             current_time,                       # us Timestamp (UNIX time or time since system boot)
-            H_aeroRef_aeroBody[0][3],	        # Global X position
-            H_aeroRef_aeroBody[1][3],           # Global Y position
-            H_aeroRef_aeroBody[2][3],	        # Global Z position
+            H0_2[0][3],	        # Global X position
+            H0_2[1][3],           # Global Y position
+            H0_2[2][3],	        # Global Z position
             rpy_rad[0],	                        # Roll angle
             rpy_rad[1],	                        # Pitch angle
             rpy_rad[2]	                        # Yaw angle
@@ -349,6 +349,31 @@ try:
                 H_camera_body = np.linalg.inv(H_body_camera)
                 H0_2 = H_body_camera.dot(H0_2.dot(H_camera_body))
 
+            #cmds = vehicle.commands
+            #cmds.download()
+            #cmds.wait_ready()
+
+            print("Altitude (g): %s" % vehicle.location.global_frame.alt)
+            print("Altitude (gr): %s" % vehicle.location.global_relative_frame.alt)
+            print("Altitude (l): %s" % vehicle.location.local_frame.down)
+            print("Home Location: %s" % vehicle.home_location)
+            
+            # Record time
+            timestamp = time.time() - start_time
+            
+            # Convert to NED & Euler for data logging
+            pose_ned = np.array(tf.translation_from_matrix(H0_2))
+            rpy_ned = np.array(tf.euler_from_matrix(H0_2, 'sxyz')) * 180 / m.pi
+
+            # Write to file
+            rs_pose_file.write(str(timestamp) + " " +
+                               str(pose_ned[0]) + " " +
+                               str(pose_ned[1]) + " " +
+                               str(pose_ned[2]) + " " +
+                               str(rpy_ned[0]) + " " +
+                               str(rpy_ned[1]) + " " +
+                               str(rpy_ned[2]) + "\n")
+
             # Show debug messages here
             if debug_enable == 1:
                 os.system('clear')  # This helps in displaying the messages to be more readable
@@ -359,7 +384,7 @@ try:
                 print("DEBUG: Raw pos xyz : {}".format(
                     np.array([data.translation.x, data.translation.y, data.translation.z])))
                 print("DEBUG: NED pos xyz : {}".format(np.array(tf.translation_from_matrix(H0_2))))
-                
+
 except KeyboardInterrupt:
     print("INFO: KeyboardInterrupt has been caught. Cleaning up...")     
 

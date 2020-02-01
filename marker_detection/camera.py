@@ -6,12 +6,15 @@ import datetime
 import time
 import numpy as np
 import pyrealsense2 as rs
+import os
+from utils import file_utils
 
 # specify as relative or absolute
-VIDEO_DIR = "marker_detection/videos"
+VIDEO_DIR = os.path.abspath("../videos")
+# unnamed video will be named with datetime
+VIDEO_NAME = file_utils.create_file_name_date()
 
 ''' Camera Class
-
     This high-level class retains camera parameters, such as resolution and frame rate. It also keeps track of 
     if this camera is being used on a Raspberry Pi, since the Pi requires different code for retrieving images.
 '''
@@ -37,7 +40,9 @@ class Camera(object):
     def set_resolution(self,resolution):
         if resolution == 1944:
             self.resolution = (2592, 1944)
-        if resolution == 1080:
+        elif resolution == 1088:
+            self.resolution = (1920, 1088)
+        elif resolution == 1080:
             self.resolution = (1920, 1080)
         elif resolution == 972:
             self.resolution = (1296, 972)
@@ -54,7 +59,6 @@ class Camera(object):
 
 
 ''' VideoStreamer Class
-
     This class is used to stream video from an arbitrary camera source. Once the source is defined, all the methods 
     are the same no matter what camera or computer you are using. It utilizes the VideoStream class, created by 
     Adrian Rosebrock and well documented at these links:
@@ -109,14 +113,13 @@ class VideoStreamer(Camera):
         self.vs.stop()
 
 ''' VideoWriter Class
-
     This class is used to save videos. It will automatically name your file using the current date and time if you 
     do not specify a name. Default encoding is .avi, since this has been proven to work best with cv2's funky video 
     writing methods.
 '''
 class VideoWriter(Camera):
     def __init__(self,
-                 video_dir=VIDEO_DIR,
+                 video_dir=None,
                  video_file=None,
                  ext=".avi",
                  resolution=480,
@@ -237,4 +240,3 @@ class Realsense(Camera):
     # Terminate the capture thread.
     def stop(self):
         self.pipe.stop()
-
