@@ -503,6 +503,7 @@ class ArucoTracker(MarkerTracker):
         self.scale_factor = self.marker_length / marker_length_pixels
 
     # Use this function to create and save an Aruco marker if you do not already have one.
+    # Type s once the marker is displayed to save the image
     def create_and_save_marker(self):
 
         # Second param is ID - change if you want a different marker
@@ -514,7 +515,7 @@ class ArucoTracker(MarkerTracker):
         if k == 27:  # wait for ESC key to exit
             cv2.destroyAllWindows()
         elif k == ord('s'):  # wait for 's' key to save and exit
-            cv2.imwrite('images/aruco_marker.png', marker_img)
+            cv2.imwrite('marker_detection/images/aruco_marker.png', marker_img)
             cv2.destroyAllWindows()
 
     def get_marker_rotation(self):
