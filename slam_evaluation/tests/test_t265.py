@@ -9,7 +9,8 @@ os.environ["MAVLINK20"] = "1"
 # Import the libraries
 import pyrealsense2 as rs
 
-RS_POSE_FILE = "./slam_evaluation/data/rs_pose"
+RS_POSE_FILE = "./slam_evaluation/data/pose"
+RS_ACCEL_FILE = "./slam_evaluation/data/rs_accel"
 
 
 def realsense_connect():
@@ -46,7 +47,8 @@ def rs_to_body(data):
     return pose
 
 def test_rs(pipe):
-    rs_pose_file = open(RS_POSE_FILE + ".txt", "w")
+    pose_file = open(RS_POSE_FILE + ".txt", "w")
+    accel_file = open(RS_ACCEL_FILE + ".txt", "w")
 
     print("Recording data...")
     start_time = time.time()
@@ -60,26 +62,23 @@ def test_rs(pipe):
         if data:
 
             # Pose data consists of translation and rotation
-            rs_pose = data.get_pose_data()
-
-            # Transform RS frame to body frame
-            rs_pose_body_frame = rs_to_body(rs_pose)
-
-            print(str.format("x = {0:.3f}, y = {1:.3f}, z = {2:.3f}",
-                             rs_pose_body_frame[0],
-                             rs_pose_body_frame[1],
-                             rs_pose_body_frame[2]))
+            pose = data.get_pose_data()
 
             timestamp = time.time() - start_time
 
-            rs_pose_file.write(str(timestamp) + " " +
-                               str(rs_pose_body_frame[0]) + " " +
-                               str(rs_pose_body_frame[1]) + " " +
-                               str(rs_pose_body_frame[2]) + " " +
-                               str(rs_pose.rotation.w) + " " +
-                               str(rs_pose.rotation.x) + " " +
-                               str(rs_pose.rotation.y) + " " +
-                               str(rs_pose.rotation.z) + "\n")
+            pose_file.write(str(timestamp) + " " +
+                               str(pose.translation.x) + " " +
+                               str(pose.translation.y) + " " +
+                               str(pose.translation.z) + " " +
+                               str(pose.rotation.w) + " " +
+                               str(pose.rotation.x) + " " +
+                               str(pose.rotation.y) + " " +
+                               str(pose.rotation.z) + "\n")
+
+            accel_file.write(str(timestamp) + " " +
+                            str(pose.acceleration.x) + " " +
+                            str(pose.acceleration.y) + " " +
+                            str(pose.acceleration.z) + "\n")
 
 
 

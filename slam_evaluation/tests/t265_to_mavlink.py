@@ -35,9 +35,12 @@ from marker_detection.camera import Realsense
 
 DATA_DIR = "./slam_evaluation/data"
 RS_FILE_BASE = "rs_pose"
+ACCEL_FILE_BASE = "rs_accel"
 RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
+RS_ACCEL_FILE = file_utils.create_file_name_chronological(DATA_DIR, ACCEL_FILE_BASE, "txt")
 # pose files to save to
 rs_pose_file = file_utils.open_file(RS_POSE_FILE)
+rs_accel_file = file_utils.open_file(RS_ACCEL_FILE)
 
 #######################################
 # Parameters
@@ -131,7 +134,7 @@ else:
 2: NED Frame
 3: RS Frame
 
-H2_0: NED Frame rel. to NED origin (pose sent to Pixhawk)
+H0_2: NED Frame rel. to NED origin (pose sent to Pixhawk)
 H0_1: RS Origin rel. to NED Origin
 H1_3: RS Frame rel. to RS Origin (pose received from Realsense)
 H3_2: NED Frame rel. to RS Frame
@@ -286,10 +289,6 @@ print("INFO: Connecting to vehicle.")
 vehicle = dronekit_utils.connect_vehicle()
 print("INFO: Vehicle connected.")
 
-# print("INFO: Tricking compass.")
-#vehicle = trick_compass(vehicle)
-# print("INFO: Compass tricked.")
-
 # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
 vehicle.add_message_listener('STATUSTEXT', statustext_callback)
 
@@ -319,6 +318,7 @@ if compass_enabled == 1:
     # Wait a short while for yaw to be correctly initiated
     time.sleep(1)
 
+start_time = time.time()
 print("INFO: Sending VISION_POSITION_ESTIMATE messages to FCU.")
 try:
     while True:
@@ -365,7 +365,7 @@ try:
             pose_ned = np.array(tf.translation_from_matrix(H0_2))
             rpy_ned = np.array(tf.euler_from_matrix(H0_2, 'sxyz')) * 180 / m.pi
 
-            # Write to file
+            # Write pose and accelerations to file
             rs_pose_file.write(str(timestamp) + " " +
                                str(pose_ned[0]) + " " +
                                str(pose_ned[1]) + " " +
@@ -373,6 +373,10 @@ try:
                                str(rpy_ned[0]) + " " +
                                str(rpy_ned[1]) + " " +
                                str(rpy_ned[2]) + "\n")
+            rs_accel_file.write(str(timestamp) + " " +
+                             str(data.acceleration.x) + " " +
+                             str(data.acceleration.y) + " " +
+                             str(data.acceleration.z) + "\n")
 
             # Show debug messages here
             if debug_enable == 1:
