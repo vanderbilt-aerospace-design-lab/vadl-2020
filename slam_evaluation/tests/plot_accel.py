@@ -10,7 +10,7 @@ parser.add_argument('-f', "--file", type=str,
 
 args = vars(parser.parse_args())
 
-f = open(args["file"], "r")
+f = open(args["file"] + ".txt", "r")
 lines = f.readlines()
 
 time = []
@@ -40,5 +40,6 @@ plt.plot(time, accel_z)
 plt.ylabel("z_accel")
 plt.xlabel("time")
 plt.title("Z Acceleration")
+plt.savefig(args["file"] + ".jpeg")
 plt.show()
 
