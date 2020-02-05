@@ -67,7 +67,7 @@ compass_enabled = 0
 home_lat = 0
 home_lon = 0
 #home_lon = -1185031700
-home_alt = 0 #TODO: Set to 0? 
+home_alt = 0 
 
 vehicle = None
 pipe = None
@@ -348,15 +348,6 @@ try:
                 H_body_camera[2][3] = body_offset_z
                 H_camera_body = np.linalg.inv(H_body_camera)
                 H0_2 = H_body_camera.dot(H0_2.dot(H_camera_body))
-
-            #cmds = vehicle.commands
-            #cmds.download()
-            #cmds.wait_ready()
-
-            print("Altitude (g): %s" % vehicle.location.global_frame.alt)
-            print("Altitude (gr): %s" % vehicle.location.global_relative_frame.alt)
-            print("Altitude (l): %s" % vehicle.location.local_frame.down)
-            print("Home Location: %s" % vehicle.home_location)
             
             # Record time
             timestamp = time.time() - start_time
@@ -370,9 +361,10 @@ try:
                                str(pose_ned[0]) + " " +
                                str(pose_ned[1]) + " " +
                                str(pose_ned[2]) + " " +
-                               str(rpy_ned[0]) + " " +
-                               str(rpy_ned[1]) + " " +
-                               str(rpy_ned[2]) + "\n")
+                               str(data.quaternion.w) + " " +
+                               str(data.quaternion.x) + " " +
+                               str(data.quaternion.y) + " " +
+                               str(data.quaternion.z) + "\n")
             rs_accel_file.write(str(timestamp) + " " +
                              str(data.acceleration.x) + " " +
                              str(data.acceleration.y) + " " +
