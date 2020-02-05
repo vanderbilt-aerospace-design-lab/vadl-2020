@@ -361,10 +361,10 @@ try:
                                str(pose_ned[0]) + " " +
                                str(pose_ned[1]) + " " +
                                str(pose_ned[2]) + " " +
-                               str(data.quaternion.w) + " " +
-                               str(data.quaternion.x) + " " +
-                               str(data.quaternion.y) + " " +
-                               str(data.quaternion.z) + "\n")
+                               str(data.rotation.w) + " " +
+                               str(data.rotation.x) + " " +
+                               str(data.rotation.y) + " " +
+                               str(data.rotation.z) + "\n")
             rs_accel_file.write(str(timestamp) + " " +
                              str(data.acceleration.x) + " " +
                              str(data.acceleration.y) + " " +
