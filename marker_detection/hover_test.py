@@ -1,7 +1,7 @@
-    ''' Flight landing script
-    Goal is to takeoff, fly to a set altitude,
-    switch to tracking mode, and maintain a
-    hover over the marker. Manual override always available. '''
+''' Flight landing script
+Goal is to takeoff, fly to a set altitude,
+switch to tracking mode, and maintain a
+hover over the marker. Manual override always available. '''
 
 from dronekit import VehicleMode
 import argparse
@@ -59,21 +59,20 @@ if not isinstance(args["video"], int):
 else:
     VIDEO_FILE_STREAM = 0
 
-def ned_to_body(location_ned, attitude):
-    roll_R = tf.rotation_matrix(attitude.roll, (1, 0, 0))[0:3, 0:3]
-    pitch_R = tf.rotation_matrix(attitude.pitch, (0, 1, 0))[0:3, 0:3]
-    yaw_R = tf.rotation_matrix(attitude.yaw, (0, 0, 1))[0:3, 0:3]
-    transform = np.matmul(np.matmul(roll_R, pitch_R), yaw_R)
+def aruco_ref_to_body_ref(aruco_pose):
+    # Forward facing
+    aruco_to_body_transform = np.array([[-1, 0, 0, 0],
+                                        [0, -1, 0, 0],
+                                        [0, 0, -1, 0],
+                                        [0, 0, 0, -1]])
 
-    ned_mat = np.array([location_ned.north, location_ned.east, location_ned.down])
+    # Original
+    aruco_pose = np.array([aruco_pose[0], aruco_pose[1], aruco_pose[2], 1])
 
-    return np.matmul(ned_mat, transform)
+    body_pose = np.matmul(aruco_pose, aruco_to_body_transform)
 
-    ned_mat = np.array([location_ned.north, location_ned.east, location_ned.down])
+    return np.array([body_pose[0], body_pose[1], body_pose[2]])
 
-    return np.matmul(ned_mat, transform)
-
->>>>>>> 5298cfb7198d3064d15284d3d9e528bd4c22e0cb
 def marker_hover(vehicle, marker_tracker):
 
     pid = PID(1, 0.1, 0.05, setpoint=0)
@@ -92,13 +91,11 @@ def marker_hover(vehicle, marker_tracker):
         if marker_tracker.is_marker_found():
 
             # Flip signs because aruco has bottom right and down as positive axis
-            marker_pose_aruco_ref = marker_tracker.get_pose()
+            marker_pose_cam_ref = marker_tracker.get_pose()
 
             '''Aruco Marker'''
-            marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_aruco_ref)
+            marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_cam_ref)
 
-            # command_forward = pid(marker_pose_body_ref[0])
-            # command_right = pid(marker_pose_body_ref[1])
             command_forward = marker_pose_body_ref[0]
             command_right = marker_pose_body_ref[1]
 
@@ -109,7 +106,8 @@ def marker_hover(vehicle, marker_tracker):
                                                                 forward=command_forward,
                                                                 right=command_right,
                                                                 down=0)
-            print(vehicle.location.local_frame)
+            # print(vehicle.location.local_frame)
+
             # Mess w/ this during test
             time.sleep(0.5)
 
@@ -119,20 +117,6 @@ def marker_hover(vehicle, marker_tracker):
         else:
             if args["debug"]:
                 pid_file.write("{} {}\n".format("N/A", "N/A"))
-
-def aruco_ref_to_body_ref(aruco_pose):
-    # Forward facing
-    aruco_to_body_transform = np.array([[-1, 0, 0, 0],
-                                        [0, -1, 0, 0],
-                                        [0, 0, -1, 0],
-                                        [0, 0, 0, -1]])
-
-    # Original
-    aruco_pose = np.array([aruco_pose[0], aruco_pose[1], aruco_pose[2], 1])
-
-    body_pose = np.matmul(aruco_pose, aruco_to_body_transform)
-
-    return np.array([body_pose[0], body_pose[1], body_pose[2]])
 
 def main():
     # Create Marker Detector; before UAV takes off because takes a while to process
