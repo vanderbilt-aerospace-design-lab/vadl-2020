@@ -71,6 +71,28 @@ HB_2 = np.array([[1, 0, 0, 0],
 
 H3_2 = H3_A.dot(HA_B).dot(HB_2)
 
+vehicle_global = None
+heading_north_yaw = None
+
+# Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
+def statustext_callback(self, attr_name, value):
+    # These are the status texts that indicates EKF is ready to receive home position
+    if value.text == "GPS Glitch" or value.text == "GPS Glitch cleared" or value.text == "EKF2 IMU1 ext nav yaw alignment complete":
+        time.sleep(0.1)
+        print("INFO: Set EKF home with default GPS location")
+        dronekit_utils.set_default_global_origin(vehicle_global, self.home_lat, self.home_lon, self.home_alt)
+        dronekit_utils.set_default_home_position(vehicle_global, self.home_lat, self.home_lon, self.home_alt)
+
+# Listen to attitude data to acquire heading when compass data is enabled
+def att_msg_callback(self, attr_name, value):
+    global heading_north_yaw
+    if heading_north_yaw is None:
+        heading_north_yaw = value.yaw
+        print("INFO: Received first ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
+    else:
+        heading_north_yaw = value.yaw
+        print("INFO: Received ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
+
 
 # TODO: Add documentation once you know this works
 class RealsenseLocalization:
@@ -121,6 +143,10 @@ class RealsenseLocalization:
         if self.vehicle is None:
             self.vehicle = dronekit_utils.connect_vehicle()
 
+        # Unfortunate thing we must do to use Mavlink callback functions
+        global vehicle_global
+        vehicle_global = self.vehicle
+
     def start(self):
         # Spawn a thread to transform realsense pose to UAV pose and send vision_position_estimate messages to
         # Mavlink in the background
@@ -133,11 +159,11 @@ class RealsenseLocalization:
     def localize(self):
 
         # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
-        self.vehicle.add_message_listener('STATUSTEXT', self.statustext_callback)
+        self.vehicle.add_message_listener('STATUSTEXT', statustext_callback)
 
         if self.compass_enabled == 1:
             # Listen to the attitude self.data in aeronautical frame
-            self.vehicle.add_message_listener('ATTITUDE', self.att_msg_callback)
+            self.vehicle.add_message_listener('ATTITUDE', att_msg_callback)
 
         # Send MAVlink messages in the background
         sched = BackgroundScheduler()
@@ -276,24 +302,6 @@ class RealsenseLocalization:
                 )
                 self.vehicle.send_mavlink(status_msg)
                 self.vehicle.flush()
-
-    # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
-    def statustext_callback(self, attr_name, value):
-        # These are the status texts that indicates EKF is ready to receive home position
-        if value.text == "GPS Glitch" or value.text == "GPS Glitch cleared" or value.text == "EKF2 IMU1 ext nav yaw alignment complete":
-            time.sleep(0.1)
-            print("INFO: Set EKF home with default GPS location")
-            dronekit_utils.set_default_global_origin(self.vehicle, self.home_lat, self.home_lon, self.home_alt)
-            dronekit_utils.set_default_home_position(self.vehicle, self.home_lat, self.home_lon, self.home_alt)
-
-    # Listen to attitude data to acquire heading when compass data is enabled
-    def att_msg_callback(self, attr_name, value):
-        if self.heading_north_yaw is None:
-            self.heading_north_yaw = value.yaw
-            print("INFO: Received first ATTITUDE message with heading yaw", self.heading_north_yaw * 180 / m.pi, "degrees")
-        else:
-            self.heading_north_yaw = value.yaw
-            print("INFO: Received ATTITUDE message with heading yaw", self.heading_north_yaw * 180 / m.pi, "degrees")
 
     # Monitor user input from the terminal and update scale factor accordingly
     def scale_update(self):
