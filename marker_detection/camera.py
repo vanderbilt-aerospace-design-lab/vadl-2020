@@ -216,6 +216,18 @@ class Realsense(Camera):
             # TODO: Determine if this is ever even the case
             return False
 
+    def update(self):
+        # Wait for frames
+        frames = self.pipe.wait_for_frames()
+
+        # Get pose frame
+        self.data = frames.get_pose_frame()
+
+        if self.is_tracking():
+
+            # Pose data consists of translation and rotation
+            self.pose_object = self.data.get_pose_data()
+
     def is_tracking(self):
         return self.data
 
