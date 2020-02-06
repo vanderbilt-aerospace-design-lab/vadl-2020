@@ -20,7 +20,7 @@ from utils import dronekit_utils, file_utils
 from threading import Thread
 
 # Create file names for debugging
-DATA_DIR = "./slam_evaluation/self.data"
+DATA_DIR = "./slam_evaluation/data"
 RS_FILE_BASE = "rs_pose"
 ACCEL_FILE_BASE = "rs_accel"
 RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
