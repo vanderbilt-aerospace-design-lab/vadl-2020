@@ -137,19 +137,23 @@ def main():
     realsense_localization.start(vehicle)
 
     # Wait for home location to be set
-    dronekit_utils.wait_for_home_location(vehicle)
+    while vehicle.home_location is None:
+        print("Waiting for home location")
+        time.sleep(1)
+    print(vehicle.home_location)
+    #dronekit_utils.wait_for_home_location(vehicle)
 
     # Arm the UAV
-    dronekit_utils.arm(vehicle)
+    dronekit_utils.arm_realsense_mode(vehicle)
 
     # Takeoff and fly to a target altitude
-    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+#    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
 
     # Maintain hover over a marker
-    marker_hover(vehicle, marker_tracker)
+ #   marker_hover(vehicle, marker_tracker)
 
     # Land the UAV (imprecisely)
-    dronekit_utils.land(vehicle)
+  #  dronekit_utils.land(vehicle)
 
 
 if __name__ == "__main__":
