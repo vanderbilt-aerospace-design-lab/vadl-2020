@@ -7,18 +7,14 @@ import os
 os.environ["MAVLINK20"] = "1"
 
 # Import the libraries
-import pyrealsense2 as rs
 import numpy as np
 import transformations as tf
 import math as m
 import time
-import argparse
 import threading
 from threading import Thread
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from dronekit import connect, VehicleMode
-from pymavlink import mavutil
 from utils import dronekit_utils, file_utils
 from marker_detection.camera import Realsense
 
@@ -115,11 +111,9 @@ current_confidence = None
 # Functions
 #######################################
 
-# TODO: Make a MavlinkBackgroundScheduler class to abstract Mavlink message sending
 # https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
 def send_vision_position_message():
     global vehicle
-
     if H0_2 is not None:
         rpy_rad = np.array( tf.euler_from_matrix(H0_2, 'sxyz'))
 
@@ -145,26 +139,26 @@ def send_confidence_level_dummy_message():
         print("INFO: Tracking confidence: ", pose_data_confidence_level[data.tracker_confidence])
 
         # Send MAVLink message to show confidence level numerically
-        msg = vehicle.message_factory.vision_position_delta_encode(
-            0,	            #us	Timestamp (UNIX time or time since system boot)
-            0,	            #Time since last reported camera frame
-            [0, 0, 0],      #angle_delta
-            [0, 0, 0],      #position_delta
-            float(data.tracker_confidence * 100 / 3)
-        )
-        vehicle.send_mavlink(msg)
-        vehicle.flush()
+        # msg = vehicle.message_factory.vision_position_delta_encode(
+        #     0,	            #us	Timestamp (UNIX time or time since system boot)
+        #     0,	            #Time since last reported camera frame
+        #     [0, 0, 0],      #angle_delta
+        #     [0, 0, 0],      #position_delta
+        #     float(data.tracker_confidence * 100 / 3)
+        # )
+        # vehicle.send_mavlink(msg)
+        # vehicle.flush()
 
         # If confidence level changes, send MAVLink message to show confidence level textually and phonetically
-        if current_confidence is None or current_confidence != data.tracker_confidence:
-            current_confidence = data.tracker_confidence
-            confidence_status_string = 'Tracking confidence: ' + pose_data_confidence_level[data.tracker_confidence]
-            status_msg = vehicle.message_factory.statustext_encode(
-                3,	            #severity, defined here: https://mavlink.io/en/messages/common.html#MAV_SEVERITY, 3 will let the message be displayed on Mission Planner HUD
-                confidence_status_string.encode()	  #text	char[50]
-            )
-            vehicle.send_mavlink(status_msg)
-            vehicle.flush()
+        # if current_confidence is None or current_confidence != data.tracker_confidence:
+        #     current_confidence = data.tracker_confidence
+            # confidence_status_string = 'Tracking confidence: ' + pose_data_confidence_level[data.tracker_confidence]
+            # status_msg = vehicle.message_factory.statustext_encode(
+            #     3,	            #severity, defined here: https://mavlink.io/en/messages/common.html#MAV_SEVERITY, 3 will let the message be displayed on Mission Planner HUD
+            #     confidence_status_string.encode()	  #text	char[50]
+            # )
+            # vehicle.send_mavlink(status_msg)
+            # vehicle.flush()
 
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
@@ -292,7 +286,7 @@ def localize(rs):
         print("Realsense pipeline and vehicle object closed.")
         sys.exit()
 
-def start_realsense_localization(vehicle_object):
+def start(vehicle_object):
     global vehicle
     vehicle = vehicle_object
     rs = Realsense()

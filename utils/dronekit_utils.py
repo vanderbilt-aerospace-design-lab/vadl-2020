@@ -11,7 +11,10 @@ def connect_vehicle(connection_string=CONNECTION_STRING):
     print("\nConnecting to vehicle on: %s" % connection_string)
 
     if connection_string is None:
-        return connect('tcp:127.0.0.1:5760', wait_ready=True)
+        import dronekit_sitl
+        sitl = dronekit_sitl.start_default()
+        connection_string = sitl.connection_string()
+        return connect(connection_string, wait_ready=True)
     else:
         return connect(connection_string, wait_ready=True, baud=921600)
 
@@ -22,7 +25,7 @@ def connect_vehicle_args(args=None):
         sitl = dronekit_sitl.start_default()
         connection_string = sitl.connection_string()
     else:
-        connection_string = "/dev/ttyAMA0"
+        connection_string = CONNECTION_STRING
 
     # Connect to the Vehicle
     return connect_vehicle(connection_string)
