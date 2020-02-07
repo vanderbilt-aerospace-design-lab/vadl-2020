@@ -1,4 +1,4 @@
-# Set the path for IDLE
+ # Set the path for IDLE
 import sys
 sys.path.append("/usr/local/lib/")
 
@@ -6,27 +6,28 @@ sys.path.append("/usr/local/lib/")
 import os
 os.environ["MAVLINK20"] = "1"
 
-# Libraries
+# Import the libraries
+import pyrealsense2 as rs
 import numpy as np
 import transformations as tf
 import math as m
 import time
+import argparse
 import threading
+from threading import Thread
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# Personal files
-from marker_detection.camera import Realsense
+from dronekit import connect, VehicleMode
+from pymavlink import mavutil
 from utils import dronekit_utils, file_utils
-from threading import Thread
+from marker_detection.camera import Realsense
 
-# Create file names for debugging
 DATA_DIR = "./slam_evaluation/data"
 RS_FILE_BASE = "rs_pose"
 ACCEL_FILE_BASE = "rs_accel"
 RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
 RS_ACCEL_FILE = file_utils.create_file_name_chronological(DATA_DIR, ACCEL_FILE_BASE, "txt")
-
-# open files
+# pose files to save to
 rs_pose_file = file_utils.open_file(RS_POSE_FILE)
 rs_accel_file = file_utils.open_file(RS_ACCEL_FILE)
 
@@ -51,11 +52,11 @@ scale_factor = 1.0
 compass_enabled = 0
 
 # Default global position of home/ origin
+#home_lat = 341613615
 home_lat = 0
 home_lon = 0
+#home_lon = -1185031700
 home_alt = 0
-
-pipe = None
 
 scale_calib_enable = 0
 debug_enable = 0
@@ -64,22 +65,22 @@ debug_enable = 0
 pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
 
 ''' Realsense to NED pose transform
-    0: NED Origin
-    1: RS Origin
-    2: NED Frame
-    3: RS Frame
+0: NED Origin
+1: RS Origin
+2: NED Frame
+3: RS Frame
 
-    H0_2: NED Frame rel. to NED origin (pose sent to Pixhawk)
-    H0_1: RS Origin rel. to NED Origin
-    H1_3: RS Frame rel. to RS Origin (pose received from Realsense)
-    H3_2: NED Frame rel. to RS Frame
+H0_2: NED Frame rel. to NED origin (pose sent to Pixhawk)
+H0_1: RS Origin rel. to NED Origin
+H1_3: RS Frame rel. to RS Origin (pose received from Realsense)
+H3_2: NED Frame rel. to RS Frame
 
-    H0_2 = H0_1.dot(H1_3).dot(H3_2)
+H0_2 = H0_1.dot(H1_3).dot(H3_2)
 
-    H3_2 = H3_A.dot(HA_B).dot(HB_2)
-    Broken up into a 180 deg. flip about z (A), 45 deg rotation about x (B) and 
-    left hand to right hand coord. system change.
-    '''
+H3_2 = H3_A.dot(HA_B).dot(HB_2)
+Broken up into a 180 deg. flip about z (A), 45 deg rotation about x (B) and 
+left hand to right hand coord. system change.
+'''
 
 H0_1 = np.array([[1, 0, 0, 0],
                  [0, 0, 1, 0],
@@ -93,8 +94,8 @@ HA_3 = np.array([[-1, 0, 0, 0],
 H3_A = tf.inverse_matrix(HA_3)
 
 HA_B = np.array([[1, 0, 0, 0],
-                 [0, np.cos(40 * np.pi / 180), -np.sin(40 * np.pi / 180), 0],
-                 [0, np.sin(40 * np.pi / 180), np.cos(40 * np.pi / 180), 0],
+                 [0, np.cos(40*np.pi / 180), -np.sin(40*np.pi / 180), 0],
+                 [0, np.sin(40*np.pi / 180), np.cos(40*np.pi / 180), 0],
                  [0, 0, 0, 1]])
 
 HB_2 = np.array([[1, 0, 0, 0],
@@ -104,9 +105,65 @@ HB_2 = np.array([[1, 0, 0, 0],
 
 H3_2 = H3_A.dot(HA_B).dot(HB_2)
 
-heading_north_yaw = None
+vehicle = None
+H0_2 = None
+current_time = None
+data = None
 current_confidence = None
-heading_north_yaw = None
+
+#######################################
+# Functions
+#######################################
+
+# TODO: Make a MavlinkBackgroundScheduler class to abstract Mavlink message sending
+# https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
+def send_vision_position_message():
+
+    if H0_2 is not None:
+        rpy_rad = np.array( tf.euler_from_matrix(H0_2, 'sxyz'))
+
+        msg = vehicle.message_factory.vision_position_estimate_encode(
+            current_time,                       # us Timestamp (UNIX time or time since system boot)
+            H0_2[0][3],	        # Global X position
+            H0_2[1][3],           # Global Y position
+            H0_2[2][3],	        # Global Z position
+            rpy_rad[0],	                        # Roll angle
+            rpy_rad[1],	                        # Pitch angle
+            rpy_rad[2]	                        # Yaw angle
+        )
+
+        vehicle.send_mavlink(msg)
+        vehicle.flush()
+
+# For a lack of a dedicated message, we pack the confidence level into a message that will not be used, so we can view it on GCS
+# Confidence level value: 0 - 3, remapped to 0 - 100: 0% - Failed / 33.3% - Low / 66.6% - Medium / 100% - High
+def send_confidence_level_dummy_message():
+    global current_confidence
+    if data is not None:
+        # Show confidence level on terminal
+        print("INFO: Tracking confidence: ", pose_data_confidence_level[data.tracker_confidence])
+
+        # Send MAVLink message to show confidence level numerically
+        msg = vehicle.message_factory.vision_position_delta_encode(
+            0,	            #us	Timestamp (UNIX time or time since system boot)
+            0,	            #Time since last reported camera frame
+            [0, 0, 0],      #angle_delta
+            [0, 0, 0],      #position_delta
+            float(data.tracker_confidence * 100 / 3)
+        )
+        vehicle.send_mavlink(msg)
+        vehicle.flush()
+
+        # If confidence level changes, send MAVLink message to show confidence level textually and phonetically
+        if current_confidence is None or current_confidence != data.tracker_confidence:
+            current_confidence = data.tracker_confidence
+            confidence_status_string = 'Tracking confidence: ' + pose_data_confidence_level[data.tracker_confidence]
+            status_msg = vehicle.message_factory.statustext_encode(
+                3,	            #severity, defined here: https://mavlink.io/en/messages/common.html#MAV_SEVERITY, 3 will let the message be displayed on Mission Planner HUD
+                confidence_status_string.encode()	  #text	char[50]
+            )
+            vehicle.send_mavlink(status_msg)
+            vehicle.flush()
 
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
@@ -114,8 +171,8 @@ def statustext_callback(self, attr_name, value):
     if value.text == "GPS Glitch" or value.text == "GPS Glitch cleared" or value.text == "EKF2 IMU1 ext nav yaw alignment complete":
         time.sleep(0.1)
         print("INFO: Set EKF home with default GPS location")
-        dronekit_utils.set_default_global_origin(self, home_lat, home_lon, home_alt)
-        dronekit_utils.set_default_home_position(self, home_lat, home_lon, home_alt)
+        dronekit_utils.set_default_global_origin(vehicle, home_lat, home_lon, home_alt)
+        dronekit_utils.set_default_home_position(vehicle, home_lat, home_lon, home_alt)
 
 # Listen to attitude data to acquire heading when compass data is enabled
 def att_msg_callback(self, attr_name, value):
@@ -127,63 +184,15 @@ def att_msg_callback(self, attr_name, value):
         heading_north_yaw = value.yaw
         print("INFO: Received ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
 
-# https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
-def send_vision_position_message():
-    global vehicle, H0_2, current_time
-    if H0_2 is not None:
-        rpy_rad = np.array(tf.euler_from_matrix(H0_2, 'sxyz'))
-
-        msg = vehicle.message_factory.vision_position_estimate_encode(
-            current_time,  # us Timestamp (UNIX time or time since system boot)
-            H0_2[0][3],  # Global X position
-            H0_2[1][3],  # Global Y position
-            H0_2[2][3],  # Global Z position
-            rpy_rad[0],  # Roll angle
-            rpy_rad[1],  # Pitch angle
-            rpy_rad[2]  # Yaw angle
-        )
-
-        vehicle.send_mavlink(msg)
-        vehicle.flush()
-
-# For a lack of a dedicated message, we pack the confidence level into a message that will not be used, so we can view it on GCS
-# Confidence level value: 0 - 3, remapped to 0 - 100: 0% - Failed / 33.3% - Low / 66.6% - Medium / 100% - High
-def send_confidence_level_dummy_message():
-    global current_confidence, data
-    if data is not None:
-        # Show confidence level on terminal
-        print("INFO: Tracking confidence: ", pose_data_confidence_level[data.tracker_confidence])
-
-        # Send MAVLink message to show confidence level numerically
-        msg = vehicle.message_factory.vision_position_delta_encode(
-            0,  # us	Timestamp (UNIX time or time since system boot)
-            0,  # Time since last reported camera frame
-            [0, 0, 0],  # angle_delta
-            [0, 0, 0],  # position_delta
-            float(data.tracker_confidence * 100 / 3)
-        )
-        vehicle.send_mavlink(msg)
-        vehicle.flush()
-
-        # If confidence level changes, send MAVLink message to show confidence level textually and phonetically
-        if current_confidence is None or current_confidence != data.tracker_confidence:
-            current_confidence = data.tracker_confidence
-            confidence_status_string = 'Tracking confidence: ' + pose_data_confidence_level[data.tracker_confidence]
-            status_msg = vehicle.message_factory.statustext_encode(
-                3,
-                # severity, defined here: https://mavlink.io/en/messages/common.html#MAV_SEVERITY, 3 will let the message be displayed on Mission Planner HUD
-                confidence_status_string.encode()  # text	char[50]
-            )
-            vehicle.send_mavlink(status_msg)
-            vehicle.flush()
-
 # Monitor user input from the terminal and update scale factor accordingly
 def scale_update():
+    global scale_factor
     while True:
         scale_factor = float(input("INFO: Type in new scale as float number\n"))
         print("INFO: New scale is ", scale_factor)
 
 def localize(rs):
+    global vehicle, H0_2, data, current_time
 
     # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
     vehicle.add_message_listener('STATUSTEXT', statustext_callback)
@@ -282,6 +291,7 @@ def localize(rs):
         sys.exit()
 
 def start_realsense_localization(vehicle_object):
+    global vehicle
     vehicle = vehicle_object
     rs = Realsense()
 
