@@ -106,9 +106,6 @@ H3_2 = H3_A.dot(HA_B).dot(HB_2)
 
 heading_north_yaw = None
 current_confidence = None
-vehicle = None
-H0_2 = None
-current_time = None
 heading_north_yaw = None
 
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
@@ -132,6 +129,7 @@ def att_msg_callback(self, attr_name, value):
 
 # https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
 def send_vision_position_message():
+    global vehicle, H0_2, current_time
     if H0_2 is not None:
         rpy_rad = np.array(tf.euler_from_matrix(H0_2, 'sxyz'))
 
