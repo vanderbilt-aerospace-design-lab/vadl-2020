@@ -12,6 +12,7 @@ import time
 from utils import dronekit_utils, file_utils
 from marker_detection.marker_tracker import ArucoTracker
 from slam_evaluation import realsense_localization
+from apscheduler.schedulers.background import BackgroundScheduler
 
 TARGET_ALTITUDE = 1 # Meters
 
@@ -133,27 +134,28 @@ def main():
     # Connect to the Pixhawk
     vehicle = dronekit_utils.connect_vehicle_args(args)
 
+    # Create a scheduler to send Mavlink commands in the background
+    sched = BackgroundScheduler()
+
     # Begin realsense localization in the background
-    realsense_localization.start(vehicle)
+    realsense_localization.start(vehicle, sched)
 
     # Wait for home location to be set
     while vehicle.home_location is None:
-        print("Waiting for home location")
+        print("Waiting for EKF Origin to be set")
         time.sleep(1)
-    print(vehicle.home_location)
-    #dronekit_utils.wait_for_home_location(vehicle)
 
     # Arm the UAV
-    dronekit_utils.arm_realsense_mode(vehicle)
+    sched.add_job(dronekit_utils.arm_realsense_mode, args=(vehicle,))
 
     # Takeoff and fly to a target altitude
-#    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    # dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
 
     # Maintain hover over a marker
- #   marker_hover(vehicle, marker_tracker)
+    # marker_hover(vehicle, marker_tracker)
 
     # Land the UAV (imprecisely)
-  #  dronekit_utils.land(vehicle)
+    # dronekit_utils.land(vehicle)
 
 
 if __name__ == "__main__":
