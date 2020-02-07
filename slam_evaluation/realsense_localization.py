@@ -187,7 +187,7 @@ def scale_update():
         scale_factor = float(input("INFO: Type in new scale as float number\n"))
         print("INFO: New scale is ", scale_factor)
 
-def localize(rs):
+def localize(rs, sched=None):
     global vehicle, H0_2, data, current_time
 
     # Listen to the mavlink messages that will be used as trigger to set EKF home automatically
@@ -198,7 +198,9 @@ def localize(rs):
         vehicle.add_message_listener('ATTITUDE', att_msg_callback)
 
     # Send MAVlink messages in the background
-    sched = BackgroundScheduler()
+    if sched is None:
+        sched = BackgroundScheduler()
+
     sched.add_job(send_vision_position_message, 'interval', seconds=1 / vision_msg_hz)
     sched.add_job(send_confidence_level_dummy_message, 'interval', seconds=1 / confidence_msg_hz)
 
@@ -286,7 +288,7 @@ def localize(rs):
         print("Realsense pipeline and vehicle object closed.")
         sys.exit()
 
-def start(vehicle_object):
+def start(vehicle_object, scheduler=None):
     global vehicle
     vehicle = vehicle_object
     rs = Realsense()
@@ -294,6 +296,6 @@ def start(vehicle_object):
     # Spawn a thread to transform realsense pose to UAV pose and send vision_position_estimate messages to
     # Mavlink in the background
     # Make it daemon so it ends with the program ending
-    localize_thread = Thread(target=localize, args=(rs,))
+    localize_thread = Thread(target=localize, args=(rs, scheduler))
     localize_thread.daemon = True
     localize_thread.start()
