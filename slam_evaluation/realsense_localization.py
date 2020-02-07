@@ -81,6 +81,7 @@ home_alt = 0
 # pose self.data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
 pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
 current_confidence = None
+current_time = None
 
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
@@ -216,8 +217,8 @@ class RealsenseLocalization:
 
         # Send MAVlink messages in the background
         sched = BackgroundScheduler()
-        sched.add_job(self.send_vision_position_message, 'interval', seconds=1 / self.vision_msg_hz)
-        sched.add_job(self.send_confidence_level_dummy_message, 'interval', seconds=1 / self.confidence_msg_hz)
+        sched.add_job(send_vision_position_message, 'interval', seconds=1 / self.vision_msg_hz)
+        sched.add_job(send_confidence_level_dummy_message, 'interval', seconds=1 / self.confidence_msg_hz)
 
         # For scale calibration, we will use a thread to monitor user input
         if self.scale_calib_enable:
