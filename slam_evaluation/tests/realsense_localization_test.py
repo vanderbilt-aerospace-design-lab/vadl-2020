@@ -1,5 +1,5 @@
 from utils import dronekit_utils
-from slam_evaluation.realsense_localization import RealsenseLocalization
+import slam_evaluation.realsense_localization as realsense_localization
 import time
 
 def main():
@@ -7,7 +7,7 @@ def main():
     # Connect to vehicle
     vehicle = dronekit_utils.connect_vehicle()
 
-    rl = RealsenseLocalization(vehicle=vehicle)
+    realsense_localization.start_realsense_localization(vehicle)
 
     while True:
         print("I am running")
