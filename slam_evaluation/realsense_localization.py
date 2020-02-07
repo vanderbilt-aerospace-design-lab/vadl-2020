@@ -118,6 +118,7 @@ current_confidence = None
 # TODO: Make a MavlinkBackgroundScheduler class to abstract Mavlink message sending
 # https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
 def send_vision_position_message():
+    global vehicle
 
     if H0_2 is not None:
         rpy_rad = np.array( tf.euler_from_matrix(H0_2, 'sxyz'))
@@ -138,7 +139,7 @@ def send_vision_position_message():
 # For a lack of a dedicated message, we pack the confidence level into a message that will not be used, so we can view it on GCS
 # Confidence level value: 0 - 3, remapped to 0 - 100: 0% - Failed / 33.3% - Low / 66.6% - Medium / 100% - High
 def send_confidence_level_dummy_message():
-    global current_confidence
+    global current_confidence, vehicle
     if data is not None:
         # Show confidence level on terminal
         print("INFO: Tracking confidence: ", pose_data_confidence_level[data.tracker_confidence])
@@ -167,6 +168,7 @@ def send_confidence_level_dummy_message():
 
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
+    global vehicle
     # These are the status texts that indicates EKF is ready to receive home position
     if value.text == "GPS Glitch" or value.text == "GPS Glitch cleared" or value.text == "EKF2 IMU1 ext nav yaw alignment complete":
         time.sleep(0.1)
