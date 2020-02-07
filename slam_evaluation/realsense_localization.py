@@ -71,11 +71,16 @@ HB_2 = np.array([[1, 0, 0, 0],
 
 H3_2 = H3_A.dot(HA_B).dot(HB_2)
 
+data_global = None
 vehicle_global = None
 heading_north_yaw = None
+H0_2_global = None
 home_lat = 0
 home_lon = 0
 home_alt = 0
+# pose self.data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
+pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
+current_confidence = None
 
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
@@ -95,6 +100,57 @@ def att_msg_callback(self, attr_name, value):
     else:
         heading_north_yaw = value.yaw
         print("INFO: Received ATTITUDE message with heading yaw", heading_north_yaw * 180 / m.pi, "degrees")
+
+# https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
+def send_vision_position_message():
+    global H0_2_global, current_time
+    if H0_2_global is not None:
+        rpy_rad = np.array(tf.euler_from_matrix(H0_2_global, 'sxyz'))
+
+        msg = vehicle_global.message_factory.vision_position_estimate_encode(
+            current_time,  # us Timestamp (UNIX time or time since system boot)
+            H0_2_global[0][3],  # Global X position
+            H0_2_global[1][3],  # Global Y position
+            H0_2_global[2][3],  # Global Z position
+            rpy_rad[0],  # Roll angle
+            rpy_rad[1],  # Pitch angle
+            rpy_rad[2]  # Yaw angle
+        )
+
+        vehicle_global.send_mavlink(msg)
+        vehicle_global.flush()
+
+# For a lack of a dedicated message, we pack the confidence level into a message that will not be used, so we can view it on GCS
+# Confidence level value: 0 - 3, remapped to 0 - 100: 0% - Failed / 33.3% - Low / 66.6% - Medium / 100% - High
+def send_confidence_level_dummy_message():
+    global current_confidence
+    if data_global is not None:
+        # Show confidence level on terminal
+        print("INFO: Tracking confidence: ", pose_data_confidence_level[data_global.tracker_confidence])
+
+        # Send MAVLink message to show confidence level numerically
+        msg = vehicle_global.message_factory.vision_position_delta_encode(
+            0,  # us	Timestamp (UNIX time or time since system boot)
+            0,  # Time since last reported camera frame
+            [0, 0, 0],  # angle_delta
+            [0, 0, 0],  # position_delta
+            float(data_global.tracker_confidence * 100 / 3)
+        )
+        vehicle_global.send_mavlink(msg)
+        vehicle_global.flush()
+
+        # If confidence level changes, send MAVLink message to show confidence level textually and phonetically
+        if current_confidence is None or current_confidence != data_global.tracker_confidence:
+            current_confidence = data_global.tracker_confidence
+            confidence_status_string = 'Tracking confidence: ' + pose_data_confidence_level[data_global.tracker_confidence]
+            status_msg = vehicle_global.message_factory.statustext_encode(
+                3,
+                # severity, defined here: https://mavlink.io/en/messages/common.html#MAV_SEVERITY, 3 will let the message be displayed on Mission Planner HUD
+                confidence_status_string.encode()  # text	char[50]
+            )
+            vehicle_global.send_mavlink(status_msg)
+            vehicle_global.flush()
+
 
 
 # TODO: Add documentation once you know this works
@@ -116,17 +172,12 @@ class RealsenseLocalization:
         self.compass_enabled = 0
         self.heading_north_yaw = None
 
-        # pose self.data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
-        self.pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
-        self.current_confidence = None
-
         # Global scale factor, position x y z will be scaled up/down by this factor
         self.scale_factor = 1.0
         # TODO: Figure out how to actually use this
         self.scale_calib_enable = 0
 
         self.debug_enable = 0
-        self.current_time = 0
 
         # Realsense self.data
         self.data = None
@@ -189,9 +240,12 @@ class RealsenseLocalization:
                 # Obtain pose from the Realsense
                 self.data = self.rs.read()
 
+                global data_global
+                data_global = self.data
+
                 if self.data:
                     # Store the timestamp for MAVLink messages
-                    self.current_time = int(round(time.time() * 1000000))
+                    current_time = int(round(time.time() * 1000000))
 
                     # In transformations, Quaternions w+ix+jy+kz are represented as [w, x, y, z]!
                     H1_3 = tf.quaternion_matrix(
@@ -202,6 +256,10 @@ class RealsenseLocalization:
 
                     # Transform to aeronautic coordinates (body AND reference frame!)
                     self.H0_2 = (H0_1.dot(H1_3)).dot(H3_2)
+
+                    # TODO: Maybe there is a better way to do this?
+                    global H0_2_global
+                    H0_2_global = self.H0_2
 
                     # Take offsets from body's center of gravity (or IMU) to camera's origin into account
                     if self.body_offset_enabled == 1:
@@ -251,55 +309,6 @@ class RealsenseLocalization:
             self.vehicle.close()
             print("Realsense pipeline and self.vehicle object closed.")
             sys.exit()
-
-    # https://mavlink.io/en/messages/common.html#VISION_POSITION_ESTIMATE
-    def send_vision_position_message(self):
-
-        if self.H0_2 is not None:
-            rpy_rad = np.array(tf.euler_from_matrix(self.H0_2, 'sxyz'))
-
-            msg = self.vehicle.message_factory.vision_position_estimate_encode(
-                self.current_time,  # us Timestamp (UNIX time or time since system boot)
-                self.H0_2[0][3],  # Global X position
-                self.H0_2[1][3],  # Global Y position
-                self.H0_2[2][3],  # Global Z position
-                rpy_rad[0],  # Roll angle
-                rpy_rad[1],  # Pitch angle
-                rpy_rad[2]  # Yaw angle
-            )
-
-            self.vehicle.send_mavlink(msg)
-            self.vehicle.flush()
-
-    # For a lack of a dedicated message, we pack the confidence level into a message that will not be used, so we can view it on GCS
-    # Confidence level value: 0 - 3, remapped to 0 - 100: 0% - Failed / 33.3% - Low / 66.6% - Medium / 100% - High
-    def send_confidence_level_dummy_message(self):
-        if self.data is not None:
-            # Show confidence level on terminal
-            print("INFO: Tracking confidence: ", self.pose_data_confidence_level[self.data.tracker_confidence])
-
-            # Send MAVLink message to show confidence level numerically
-            msg = self.vehicle.message_factory.vision_position_delta_encode(
-                0,  # us	Timestamp (UNIX time or time since system boot)
-                0,  # Time since last reported camera frame
-                [0, 0, 0],  # angle_delta
-                [0, 0, 0],  # position_delta
-                float(self.data.tracker_confidence * 100 / 3)
-            )
-            self.vehicle.send_mavlink(msg)
-            self.vehicle.flush()
-
-            # If confidence level changes, send MAVLink message to show confidence level textually and phonetically
-            if self.current_confidence is None or self.current_confidence != self.data.tracker_confidence:
-                self.current_confidence = self.data.tracker_confidence
-                confidence_status_string = 'Tracking confidence: ' + self.pose_data_confidence_level[self.data.tracker_confidence]
-                status_msg = self.vehicle.message_factory.statustext_encode(
-                    3,
-                    # severity, defined here: https://mavlink.io/en/messages/common.html#MAV_SEVERITY, 3 will let the message be displayed on Mission Planner HUD
-                    confidence_status_string.encode()  # text	char[50]
-                )
-                self.vehicle.send_mavlink(status_msg)
-                self.vehicle.flush()
 
     # Monitor user input from the terminal and update scale factor accordingly
     def scale_update(self):
