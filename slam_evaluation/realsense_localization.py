@@ -73,6 +73,9 @@ H3_2 = H3_A.dot(HA_B).dot(HB_2)
 
 vehicle_global = None
 heading_north_yaw = None
+home_lat = 0
+home_lon = 0
+home_alt = 0
 
 # Listen to messages that indicate EKF is ready to set home, then set EKF home automatically.
 def statustext_callback(self, attr_name, value):
@@ -80,8 +83,8 @@ def statustext_callback(self, attr_name, value):
     if value.text == "GPS Glitch" or value.text == "GPS Glitch cleared" or value.text == "EKF2 IMU1 ext nav yaw alignment complete":
         time.sleep(0.1)
         print("INFO: Set EKF home with default GPS location")
-        dronekit_utils.set_default_global_origin(vehicle_global, self.home_lat, self.home_lon, self.home_alt)
-        dronekit_utils.set_default_home_position(vehicle_global, self.home_lat, self.home_lon, self.home_alt)
+        dronekit_utils.set_default_global_origin(vehicle_global, home_lat, home_lon, home_alt)
+        dronekit_utils.set_default_home_position(vehicle_global, home_lat, home_lon, home_alt)
 
 # Listen to attitude data to acquire heading when compass data is enabled
 def att_msg_callback(self, attr_name, value):
@@ -112,11 +115,6 @@ class RealsenseLocalization:
         # Enable using yaw from compass to align north (zero degree is facing north)
         self.compass_enabled = 0
         self.heading_north_yaw = None
-
-        # Default global position of home/ origin
-        self.home_lat = 0
-        self.home_lon = 0
-        self.home_alt = 0
 
         # pose self.data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
         self.pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
