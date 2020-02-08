@@ -30,22 +30,6 @@ def realsense_connect():
 
     return pipe
 
-def rs_to_body(data):
-
-    # Forward facing
-    H_T265body_aeroBody = np.array([[-1, 0, 0, 0],
-                                    [0, 0, -1, 0],
-                                    [0, -1, 0, 0],
-                                    [0, 0, 0, 1]])
-
-    # Original
-    pose = np.array([data.translation.x, data.translation.y, data.translation.z, 1])
-
-    # Forward facing / 45 degrees
-    pose = np.matmul(pose, H_T265body_aeroBody)
-
-    return pose
-
 def test_rs(pipe):
     pose_file = open(RS_POSE_FILE + ".txt", "w")
     accel_file = open(RS_ACCEL_FILE + ".txt", "w")

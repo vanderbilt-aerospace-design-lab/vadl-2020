@@ -6,22 +6,6 @@ from marker_detection.camera import Realsense
 
 RS_POSE_FILE = "./slam_evaluation/data/rs_pose"
 
-def rs_to_body(rs_pose):
-
-    # Forward facing
-    H_T265body_aeroBody = np.array([[-1, 0, 0, 0],
-                                    [0, 0, -1, 0],
-                                    [0, -1, 0, 0],
-                                    [0, 0, 0, 1]])
-
-    # Original
-    pose = np.array([rs_pose[0], rs_pose[1], rs_pose[2], 1])
-
-    # Forward facing / 45 degrees
-    pose = np.matmul(pose, H_T265body_aeroBody)
-
-    return pose
-
 def test_rs(rs):
     rs_pose_file = open(RS_POSE_FILE + ".txt", "w")
 
@@ -32,20 +16,17 @@ def test_rs(rs):
         pose = rs.read()
         quaternion = rs.get_quaternion()
 
-        # Transform RS frame to body frame
-        rs_pose_body_frame = rs_to_body(pose)
-
         print(str.format("x = {0:.3f}, y = {1:.3f}, z = {2:.3f}",
-                         rs_pose_body_frame[0],
-                         rs_pose_body_frame[1],
-                         rs_pose_body_frame[2]))
+                         pose.translation.x,
+                         pose.translation.y,
+                         pose.translation.z))
 
         timestamp = time.time() - start_time
 
         rs_pose_file.write(str(timestamp) + " " +
-                           str(rs_pose_body_frame[0]) + " " +
-                           str(rs_pose_body_frame[1]) + " " +
-                           str(rs_pose_body_frame[2]) + " " +
+                           str(pose.translation.x) + " " +
+                           str(pose.translation.y) + " " +
+                           str(pose.translation.z) + " " +
                            str(quaternion[0]) + " " +
                            str(quaternion[1]) + " " +
                            str(quaternion[2]) + " " +
