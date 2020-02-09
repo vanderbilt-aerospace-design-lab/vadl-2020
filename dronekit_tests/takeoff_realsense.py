@@ -1,6 +1,6 @@
 from dronekit import connect, VehicleMode
 import time
-import dronekit_sitl
+#import dronekit_sitl
 import argparse
 from utils import dronekit_utils
 from slam_evaluation import realsense_localization
