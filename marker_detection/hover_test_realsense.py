@@ -120,6 +120,10 @@ def marker_hover(vehicle, marker_tracker):
             if args["debug"]:
                 pid_file.write("{} {}\n".format("N/A", "N/A"))
 
+
+def test_callback():
+    print("Executed!")
+
 def main():
     # Create Marker Detector; before UAV takes off because takes a while to process
     marker_tracker = ArucoTracker(src=args["video"],
@@ -146,7 +150,8 @@ def main():
         time.sleep(1)
 
     # Arm the UAV
-    sched.add_job(dronekit_utils.arm_realsense_mode, args=(vehicle,))
+    sched.add_job(test_callback)
+    #sched.add_job(dronekit_utils.arm_realsense_mode, args=(vehicle,))
 
     # Takeoff and fly to a target altitude
     # dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
