@@ -49,7 +49,7 @@ def arm(vehicle):
 def arm_realsense_mode(vehicle):
     print("Arming motors")
     # Copter should arm in GUIDED mode
-    #vehicle.mode = VehicleMode("GUIDED")
+    vehicle.mode = VehicleMode("GUIDED")
     vehicle.armed = True
 
 def arm_no_failsafe(vehicle):
