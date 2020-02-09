@@ -99,6 +99,7 @@ def main():
     dronekit_utils.land(vehicle)
 
     time.sleep(100)
+    time.sleep(1)
 
 
 if __name__ == "__main__":
