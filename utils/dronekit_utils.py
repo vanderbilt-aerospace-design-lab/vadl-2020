@@ -53,6 +53,7 @@ def arm_realsense_mode(vehicle):
     # Copter should arm in GUIDED mode
     vehicle.mode = VehicleMode("GUIDED")
     vehicle.armed = True
+    time.sleep(5) # So the UAV does not takeoff immediately after
 
 def arm_no_failsafe(vehicle):
     print("Arming motors")
