@@ -18,9 +18,13 @@ def main():
     realsense_localization.start(vehicle, sched)
 
     # Wait for home location to be set
+    start_time = time.time()
     while vehicle.home_location is None:
         print("Waiting for EKF Origin to be set")
         time.sleep(1)
+        if time.time() - start_time > 5:
+            dronekit_utils.set_default_global_origin(vehicle, 0, 0, 0)
+            dronekit_utils.set_default_home_position(vehicle, 0, 0, 0)
 
     # Arm the UAV
     dronekit_utils.arm_realsense_mode(vehicle)
