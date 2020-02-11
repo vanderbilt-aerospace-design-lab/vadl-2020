@@ -10,7 +10,7 @@ from simple_pid import PID
 import os
 import time
 from utils import dronekit_utils, file_utils
-from marker_detection.marker_tracker import ArucoTracker
+from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
 from slam_evaluation import realsense_localization
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -78,7 +78,7 @@ def aruco_ref_to_body_ref(aruco_pose):
 def yellow_ref_to_body_ref(yellow_pose):
     # Forward facing
     yellow_to_body_transform = np.array([[0, -1, 0, 0],
-                                        [1, 0, 0, 0],
+                                        [-1, 0, 0, 0],
                                         [0, 0, -1, 0],
                                         [0, 0, 0, 1]])
 
@@ -110,7 +110,7 @@ def marker_hover(vehicle, marker_tracker):
             marker_pose_cam_ref = marker_tracker.get_pose()
 
             '''Aruco Marker'''
-            marker_pose_body_ref = aruco_ref_to_body_ref(marker_pose_cam_ref)
+            marker_pose_body_ref = yellow_ref_to_body_ref(marker_pose_cam_ref)
 
             command_forward = marker_pose_body_ref[0]
             command_right = marker_pose_body_ref[1]
@@ -125,7 +125,7 @@ def marker_hover(vehicle, marker_tracker):
             # print(vehicle.location.local_frame)
 
             # Mess w/ this during test
-            time.sleep(0.25)
+            #time.sleep(0.25)
 
             if args["debug"]:
                 # print("Sending: {}, {}".format(command_right, command_forward))
@@ -172,18 +172,18 @@ def main():
         time.sleep(1)
 
     # Arm the UAV
-    #dronekit_utils.arm_realsense_mode(vehicle)
+    dronekit_utils.arm_realsense_mode(vehicle)
 
     # Takeoff and fly to a target altitude
-    #dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
-    vehicle.mode = VehicleMode("GUIDED")
+    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+
     time.sleep(6)
     vehicle.airspeed = 0.10
     # Maintain hover over a marker
     marker_hover(vehicle, marker_tracker)
 
     # Land the UAV (imprecisely)
-    # dronekit_utils.land(vehicle)
+    #dronekit_utils.land(vehicle)
 
 
 if __name__ == "__main__":

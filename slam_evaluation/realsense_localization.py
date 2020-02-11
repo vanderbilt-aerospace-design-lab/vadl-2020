@@ -201,7 +201,7 @@ def localize(rs, sched=None):
     if sched is None:
         sched = BackgroundScheduler()
 
-    sched.add_job(send_vision_position_message, 'interval', seconds=1 / vision_msg_hz)
+    sched.add_job(send_vision_position_message, 'interval', seconds=1 / vision_msg_hz, max_instances=5)
     sched.add_job(send_confidence_level_dummy_message, 'interval', seconds=1 / confidence_msg_hz)
 
     # For scale calibration, we will use a thread to monitor user input
