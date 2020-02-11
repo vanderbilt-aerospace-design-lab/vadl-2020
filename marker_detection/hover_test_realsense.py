@@ -75,6 +75,20 @@ def aruco_ref_to_body_ref(aruco_pose):
 
     return np.array([body_pose[0], body_pose[1], body_pose[2]])
 
+def yellow_ref_to_body_ref(yellow_pose):
+    # Forward facing
+    yellow_to_body_transform = np.array([[0, -1, 0, 0],
+                                        [1, 0, 0, 0],
+                                        [0, 0, -1, 0],
+                                        [0, 0, 0, 1]])
+
+    # Original
+    yellow_pose = np.array([yellow_pose[0], yellow_pose[1], yellow_pose[2], 1])
+
+    body_pose = np.matmul(yellow_pose, yellow_to_body_transform)
+
+    return np.array([body_pose[0], body_pose[1], body_pose[2]])
+
 def marker_hover(vehicle, marker_tracker):
 
     pid = PID(1, 0.1, 0.05, setpoint=0)
@@ -126,14 +140,22 @@ def test_callback():
 
 def main():
     # Create Marker Detector; before UAV takes off because takes a while to process
-    marker_tracker = ArucoTracker(src=args["video"],
-                                use_pi=args["picamera"],
-                                debug=args["debug"],
-                                resolution=args["resolution"],
-                                framerate=args["fps"],
-                                video_dir=args["dir"],
-                                video_file=args["name"],
-                                pose_file=args["pose_file"])
+    # marker_tracker = ArucoTracker(src=args["video"],
+    #                             use_pi=args["picamera"],
+    #                             debug=args["debug"],
+    #                             resolution=args["resolution"],
+    #                             framerate=args["fps"],
+    #                             video_dir=args["dir"],
+    #                             video_file=args["name"],
+    #                             pose_file=args["pose_file"])
+    marker_tracker = ColorMarkerTracker(src=args["video"],
+                                        use_pi=args["picamera"],
+                                        resolution=args["resolution"],
+                                        framerate=args["fps"],
+                                        debug=args["debug"],
+                                        video_dir=args["dir"],
+                                        video_file=args["name"],
+                                        pose_file=args["pose_file"])
 
     # Connect to the Pixhawk
     vehicle = dronekit_utils.connect_vehicle_args(args)
@@ -150,11 +172,11 @@ def main():
         time.sleep(1)
 
     # Arm the UAV
-    dronekit_utils.arm_realsense_mode(vehicle)
+    #dronekit_utils.arm_realsense_mode(vehicle)
 
     # Takeoff and fly to a target altitude
-    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
-
+    #dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    vehicle.mode = VehicleMode("GUIDED")
     time.sleep(6)
     vehicle.airspeed = 0.10
     # Maintain hover over a marker
