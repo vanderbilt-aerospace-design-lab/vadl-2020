@@ -17,14 +17,7 @@ def main():
 
     # Reboot
     dronekit_utils.reboot(vehicle)
-    time.sleep(1)
-    vehicle.close()
-
-    time.sleep(7)
-
-    # Reconnect
-    vehicle = dronekit_utils.connect_vehicle_args(args)
-    print("Success: {}".format(vehicle.version)) 
+    vehicle.close() 
 
 if __name__ == "__main__":
     main()

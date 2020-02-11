@@ -11,7 +11,7 @@ from utils import file_utils
 CALIBRATION_FILE = "camera_calibration/calibration_parameters/arducam.yaml"
 POSE_DIR = "marker_detection/pose_data"
 file_utils.make_dir(POSE_DIR)
-POSE_FILE = POSE_DIR + "/" + file_utils.create_file_name_date() + ".txt" # Default pose file name
+POSE_FILE = file_utils.create_file_name_date() + ".txt" # Default pose file name
 
 ''' Marker Tracker Classes
     These classes are used to track a marker using a single camera. They maintain various image and marker data, and
@@ -27,7 +27,7 @@ class MarkerTracker(VideoStreamer):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
-                 marker_length=3.05,
+                 marker_length=0.24,
                  debug=0,
                  video_dir=None,
                  video_file=None,
@@ -61,7 +61,7 @@ class MarkerTracker(VideoStreamer):
             # Create pose file name and open it
             # Name can be accepted by itself or with ".txt" at the end
             if pose_file is None:
-                self.pose_file = POSE_FILE
+                self.pose_file = POSE_DIR + "/" + POSE_FILE
             elif not pose_file.endswith(".txt"):
                 self.pose_file = POSE_DIR + "/" + pose_file + ".txt"
             else:
@@ -137,7 +137,7 @@ class ColorMarkerTracker(MarkerTracker):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
-                 marker_length=3.048,
+                 marker_length=0.24,
                  debug=0,
                  video_dir=None,
                  video_file=None,
@@ -207,7 +207,7 @@ class ColorMarkerTracker(MarkerTracker):
                                                              cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
-        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 127, 255,
+        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 150, 255,
                                                           cv2.THRESH_BINARY)
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
@@ -386,6 +386,7 @@ class ColorMarkerTracker(MarkerTracker):
 
     # Checks if the contour approximation is a rectangle.
     def is_rectangle(self, approx):
+
         if len(approx) == 4:
 
             # compute the bounding box of the contour and use the
@@ -394,7 +395,7 @@ class ColorMarkerTracker(MarkerTracker):
             ar = w / float(h)
 
             # a rectangle will have an aspect ratio that is within this range
-            return True if 0.75 <= ar <= 1.25 else False
+            return True if 0.6 <= ar <= 1.5 else False
         return False
 
 
