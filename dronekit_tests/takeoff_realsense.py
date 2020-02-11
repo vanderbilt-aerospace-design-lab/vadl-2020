@@ -23,6 +23,7 @@ def main():
         print("Waiting for EKF Origin to be set")
         time.sleep(1)
         if time.time() - start_time > 5:
+            print("Setting home position")
             dronekit_utils.set_default_global_origin(vehicle, 0, 0, 0)
             dronekit_utils.set_default_home_position(vehicle, 0, 0, 0)
 

@@ -20,7 +20,9 @@ def connect_vehicle(connection_string=CONNECTION_STRING):
 
 def connect_vehicle_args(args=None):
     # Start SITL if connection string specified
-    if args["sitl"]:
+    if args is None:
+        connection_string = CONNECTION_STRING
+    elif args["sitl"]:
         import dronekit_sitl
         sitl = dronekit_sitl.start_default()
         connection_string = sitl.connection_string()
@@ -93,7 +95,7 @@ def takeoff(vehicle, aTargetAltitude):
         print(" Altitude: ", vehicle.location.global_relative_frame.alt)
 
         # Break and return from function just below target altitude.
-        if vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:
+        if vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.90:
             print("Reached target altitude")
             break
         time.sleep(1)

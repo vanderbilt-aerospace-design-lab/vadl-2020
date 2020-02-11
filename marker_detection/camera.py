@@ -10,7 +10,7 @@ import os
 from utils import file_utils
 
 # specify as relative or absolute
-VIDEO_DIR = os.path.abspath("../videos")
+VIDEO_DIR = "marker_detection/videos"
 # unnamed video will be named with datetime
 VIDEO_NAME = file_utils.create_file_name_date()
 

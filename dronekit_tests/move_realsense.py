@@ -27,13 +27,13 @@ def main():
 
     dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
 
-    time.sleep(5)
+    time.sleep(6)
 
-    vehicle.airspeed = 0.25
-    dronekit_utils.goto_position_target_body_offset_ned(vehicle,
-                                                        forward=0.5,
-                                                        right=0,
-                                                        down=0)
+    #vehicle.airspeed = 0.25
+    #dronekit_utils.goto_position_target_body_offset_ned(vehicle,
+     #                                                   forward=0.5,
+      #                                                  right=0,
+       #                                                 down=0)
     time.sleep(7)
 
     dronekit_utils.land(vehicle)

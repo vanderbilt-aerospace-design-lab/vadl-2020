@@ -27,7 +27,7 @@ class MarkerTracker(VideoStreamer):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
-                 marker_length=3.05,
+                 marker_length=0.24,
                  debug=0,
                  video_dir=None,
                  video_file=None,
@@ -61,7 +61,7 @@ class MarkerTracker(VideoStreamer):
             # Create pose file name and open it
             # Name can be accepted by itself or with ".txt" at the end
             if pose_file is None:
-                self.pose_file = POSE_FILE
+                self.pose_file = POSE_DIR + "/" + POSE_FILE
             elif not pose_file.endswith(".txt"):
                 self.pose_file = POSE_DIR + "/" + pose_file + ".txt"
             else:
@@ -138,7 +138,7 @@ class ColorMarkerTracker(MarkerTracker):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
-                 marker_length=.24,
+                 marker_length=0.24,
                  debug=0,
                  video_dir=None,
                  video_file=None,
@@ -388,6 +388,7 @@ class ColorMarkerTracker(MarkerTracker):
 
     # Checks if the contour approximation is a rectangle.
     def is_rectangle(self, approx):
+
         if len(approx) == 4:
 
             # compute the bounding box of the contour and use the
@@ -396,7 +397,7 @@ class ColorMarkerTracker(MarkerTracker):
             ar = w / float(h)
 
             # a rectangle will have an aspect ratio that is within this range
-            return True if 0.75 <= ar <= 1.25 else False
+            return True if 0.6 <= ar <= 1.5 else False
         return False
 
 

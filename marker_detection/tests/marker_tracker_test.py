@@ -41,20 +41,20 @@ else:
 def main():
     print("Initializing")
     yellow_tracker = ColorMarkerTracker(src=args["video"],
-                                      use_pi=args["picamera"],
-                                       resolution=args["resolution"],
-                                       framerate=args["fps"],
-                                       debug=args["debug"],
-                                       video_dir=args["dir"],
-                                       video_file=args["name"])
-    # aruco_tracker = ArucoTracker(src=args["video"],
-    #                              use_pi=args["picamera"],
-    #                              debug=args["debug"],
-    #                              resolution=args["resolution"],
-    #                              framerate=args["fps"],
-    #                              video_dir=args["dir"],
-    #                              video_file=args["name"],
-    #                              pose_file=args["pose_file"])
+                                        use_pi=args["picamera"],
+                                        resolution=args["resolution"],
+                                        framerate=args["fps"],
+                                        debug=args["debug"],
+                                        video_dir=args["dir"],
+                                        video_file=args["name"])
+   # aruco_tracker = ArucoTracker(src=args["video"],
+    #                             use_pi=args["picamera"],
+     #                            debug=args["debug"],
+      #                           resolution=args["resolution"],
+       #                          framerate=args["fps"],
+        #                         video_dir=args["dir"],
+         #                        video_file=args["name"],
+          #                       pose_file=args["pose_file"])
     print("Tracking")
     while True:
         yellow_tracker.track_marker()

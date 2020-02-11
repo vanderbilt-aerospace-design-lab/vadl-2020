@@ -63,10 +63,10 @@ else:
 
 def aruco_ref_to_body_ref(aruco_pose):
     # Forward facing
-    aruco_to_body_transform = np.array([[-1, 0, 0, 0],
-                                        [0, -1, 0, 0],
+    aruco_to_body_transform = np.array([[0, -1, 0, 0],
+                                        [1, 0, 0, 0],
                                         [0, 0, -1, 0],
-                                        [0, 0, 0, -1]])
+                                        [0, 0, 0, 1]])
 
     # Original
     aruco_pose = np.array([aruco_pose[0], aruco_pose[1], aruco_pose[2], 1])
@@ -111,7 +111,7 @@ def marker_hover(vehicle, marker_tracker):
             # print(vehicle.location.local_frame)
 
             # Mess w/ this during test
-            time.sleep(0.5)
+            time.sleep(0.25)
 
             if args["debug"]:
                 # print("Sending: {}, {}".format(command_right, command_forward))
@@ -150,14 +150,15 @@ def main():
         time.sleep(1)
 
     # Arm the UAV
-    sched.add_job(test_callback)
-    #sched.add_job(dronekit_utils.arm_realsense_mode, args=(vehicle,))
+    dronekit_utils.arm_realsense_mode(vehicle)
 
     # Takeoff and fly to a target altitude
-    # dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
 
+    time.sleep(6)
+    vehicle.airspeed = 0.10
     # Maintain hover over a marker
-    # marker_hover(vehicle, marker_tracker)
+    marker_hover(vehicle, marker_tracker)
 
     # Land the UAV (imprecisely)
     # dronekit_utils.land(vehicle)
