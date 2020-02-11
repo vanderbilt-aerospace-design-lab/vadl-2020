@@ -291,6 +291,8 @@ def localize(rs, sched=None):
 def start(vehicle_object, scheduler=None):
     global vehicle
     vehicle = vehicle_object
+
+    # Create realsense object
     rs = Realsense()
 
     # Spawn a thread to transform realsense pose to UAV pose and send vision_position_estimate messages to
