@@ -11,7 +11,7 @@ from utils import file_utils
 CALIBRATION_FILE = "camera_calibration/calibration_parameters/arducam.yaml"
 POSE_DIR = "marker_detection/pose_data"
 file_utils.make_dir(POSE_DIR)
-POSE_FILE = POSE_DIR + "/" + file_utils.create_file_name_date() + ".txt" # Default pose file name
+POSE_FILE = file_utils.create_file_name_date() + ".txt" # Default pose file name
 
 ''' Marker Tracker Classes
     These classes are used to track a marker using a single camera. They maintain various image and marker data, and
@@ -131,13 +131,14 @@ class MarkerTracker(VideoStreamer):
         pass
 
 # Tracks a yellow marker.
+# OLD MARKER LENGTH = 3.048
 class ColorMarkerTracker(MarkerTracker):
     def __init__(self,
                  src=0,
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
-                 marker_length=3.048,
+                 marker_length=.24,
                  debug=0,
                  video_dir=None,
                  video_file=None,
@@ -197,6 +198,7 @@ class ColorMarkerTracker(MarkerTracker):
         # At lower altitudes, the marker takes up the majority of the image, and OTSU normalization is ideal, since
         # it dynamically chooses the threshold value to segment between "light" and "not light". At higher altitudes,
         # the marker is too small for OTSU to threshold well, so a binary threshold is used.
+        alt = 24
         if alt < self.alt_thresh:
             # Dynamically threshold lightness
             retval2, self.thresh_light_frame = cv2.threshold(self.lab_space_frame[:, :, 0], 200, 255,
@@ -207,7 +209,7 @@ class ColorMarkerTracker(MarkerTracker):
                                                              cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
-        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 127, 255,
+        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 150, 255,
                                                           cv2.THRESH_BINARY)
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
