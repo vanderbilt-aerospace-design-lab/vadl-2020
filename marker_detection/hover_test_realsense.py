@@ -81,6 +81,9 @@ def marker_hover(vehicle, marker_tracker):
     land_ready = False
     z_offset = 0
     start_time = 0
+    x_queue = []
+    y_queue = []
+    z_queue = []
     print("Tracking marker...")
     while vehicle.mode == VehicleMode("GUIDED"):
 
@@ -91,8 +94,21 @@ def marker_hover(vehicle, marker_tracker):
 
             marker_pose = marker_tracker.get_pose()
 
-            # Transform pose to UAV body frame
+            # Transform pose to UAV body frame; proportional gain
             marker_pose_body_ref = 0.75 * marker_ref_to_body_ref(marker_pose)
+
+            x_queue.append(marker_pose_body_ref[0])
+            y_queue.append(marker_pose_body_ref[1])
+            z_queue.append(marker_pose_body_ref[2])
+
+            if len(x_queue) > 10:
+                x_queue.pop(0)
+                y_queue.pop(0)
+                z_queue.pop(0)
+
+            x_avg = np.average(x_queue)
+            y_avg = np.average(y_queue)
+            z_avg = np.average(z_queue)
 
             if not land_ready and np.absolute(marker_pose_body_ref[0]) < 0.2 and np.absolute(marker_pose_body_ref[1]) < 0.2:
                 start_time = time.time()
@@ -102,16 +118,16 @@ def marker_hover(vehicle, marker_tracker):
                 land_ready = False
             
             if land_ready and time.time() - start_time > 2:
-                z_offset += 0.00424
+                z_offset += 0.0075
 
             if marker_pose_body_ref[2] > -0.35:
                 dronekit_utils.land(vehicle)
             else:
                 # Send position command to the vehicle
                 dronekit_utils.goto_position_target_body_offset_ned(vehicle,
-                                                                    forward=marker_pose_body_ref[0],
-                                                                    right=marker_pose_body_ref[1],
-                                                                    down=-1 - marker_pose_body_ref[2] + z_offset)
+                                                                    forward=x_avg,
+                                                                    right=y_avg,
+                                                                    down=-1 - z_avg + z_offset)
 
 
             #if args["debug"]:
