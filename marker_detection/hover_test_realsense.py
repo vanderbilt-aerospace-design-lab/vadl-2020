@@ -79,7 +79,9 @@ def marker_hover(vehicle, marker_tracker):
 
     # Hover until manual override
     print("Tracking marker...")
-    while vehicle.mode == VehicleMode("GUIDED"):
+    start_time = time.time()
+    while True:
+    # while vehicle.mode == VehicleMode("GUIDED"):
 
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
@@ -101,6 +103,7 @@ def marker_hover(vehicle, marker_tracker):
                 print("Nav Command: {}".format(marker_pose_body_ref))
 
         # Maintain frequency of sending commands
+        # print(time.time() - start_time)
         marker_tracker.wait()
 
 def main():
@@ -131,22 +134,22 @@ def main():
     vehicle = dronekit_utils.connect_vehicle_args(args)
 
     # Create a scheduler to send Mavlink commands in the background
-    sched = BackgroundScheduler()
-
-    # Begin realsense localization in the background
-    realsense_localization.start(vehicle, sched)
-
-    # Arm the UAV
-    dronekit_utils.arm_realsense_mode(vehicle)
-
-    # Takeoff and fly to a target altitude
-    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
-
-    # Give time to stabilize in flight
-    time.sleep(5)
-
-    # Set the UAV speed
-    vehicle.airspeed = 0.10
+    # sched = BackgroundScheduler()
+    #
+    # # Begin realsense localization in the background
+    # realsense_localization.start(vehicle, sched)
+    #
+    # # Arm the UAV
+    # dronekit_utils.arm_realsense_mode(vehicle)
+    #
+    # # Takeoff and fly to a target altitude
+    # dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    #
+    # # Give time to stabilize in flight
+    # time.sleep(5)
+    #
+    # # Set the UAV speed
+    # vehicle.airspeed = 0.10
 
     # Maintain hover over a marker
     marker_hover(vehicle, marker_tracker)
