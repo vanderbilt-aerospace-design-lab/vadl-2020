@@ -18,6 +18,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import dronekit_utils, file_utils
 from marker_detection.camera import Realsense
 
+# 0 is sideways 45 degrees
+# 1 is forward facing
+# 2 is downward facing
+REALSENSE_ORIENTATION = 1
+
 DATA_DIR = "./slam_evaluation/data"
 RS_FILE_BASE = "rs_pose"
 ACCEL_FILE_BASE = "rs_accel"
@@ -55,12 +60,12 @@ home_lon = 0
 home_alt = 0
 
 scale_calib_enable = 0
-debug_enable = 0
+debug_enable = 1
 
 # pose data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
 pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
 
-''' Realsense to NED pose transform
+''' Realsense to NED pose transform, upside down and rotated 45 degrees
 0: NED Origin
 1: RS Origin
 2: NED Frame
@@ -77,29 +82,51 @@ H3_2 = H3_A.dot(HA_B).dot(HB_2)
 Broken up into a 180 deg. flip about z (A), 45 deg rotation about x (B) and 
 left hand to right hand coord. system change.
 '''
+if REALSENSE_ORIENTATION == 0:
 
-H0_1 = np.array([[1, 0, 0, 0],
-                 [0, 0, 1, 0],
-                 [0, -1, 0, 0],
-                 [0, 0, 0, 1]])
+    # Upside down, rotated 45 degrees, sideways mount
+    H0_1 = np.array([[1, 0, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
 
-HA_3 = np.array([[-1, 0, 0, 0],
-                 [0, -1, 0, 0],
-                 [0, 0, 1, 0],
-                 [0, 0, 0, 1]])
-H3_A = tf.inverse_matrix(HA_3)
+    HA_3 = np.array([[-1, 0, 0, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]])
+    H3_A = tf.inverse_matrix(HA_3)
 
-HA_B = np.array([[1, 0, 0, 0],
-                 [0, np.cos(40*np.pi / 180), -np.sin(40*np.pi / 180), 0],
-                 [0, np.sin(40*np.pi / 180), np.cos(40*np.pi / 180), 0],
-                 [0, 0, 0, 1]])
+    HA_B = np.array([[1, 0, 0, 0],
+                     [0, np.cos(40*np.pi / 180), -np.sin(40*np.pi / 180), 0],
+                     [0, np.sin(40*np.pi / 180), np.cos(40*np.pi / 180), 0],
+                     [0, 0, 0, 1]])
 
-HB_2 = np.array([[1, 0, 0, 0],
-                 [0, 0, -1, 0],
-                 [0, 1, 0, 0],
-                 [0, 0, 0, 1]])
+    HB_2 = np.array([[1, 0, 0, 0],
+                     [0, 0, -1, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 0, 1]])
 
-H3_2 = H3_A.dot(HA_B).dot(HB_2)
+    H3_2 = H3_A.dot(HA_B).dot(HB_2)
+elif REALSENSE_ORIENTATION == 1:
+
+    # Forward, USB port to the right
+    H0_1 = np.array([[0, 0, -1, 0],
+                     [1, 0, 0, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
+    H3_2 = np.linalg.inv(H0_1)
+else:
+
+    # Downfacing, USB port to the right
+    H0_1 = np.array([[0, 0, -1, 0],
+                     [1, 0, 0, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
+
+    H3_2 = np.array([[0, 1, 0, 0],
+                     [1, 0, 0, 0],
+                     [0, 0, -1, 0],
+                     [0, 0, 0, 1]])
 
 vehicle = None
 H0_2 = None
