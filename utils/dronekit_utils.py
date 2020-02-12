@@ -49,10 +49,17 @@ def arm(vehicle):
     vehicle.armed = True
 
 def arm_realsense_mode(vehicle):
+
+    # Wait for home location to be set
+    while vehicle.home_location is None:
+        print("Waiting for EKF Origin to be set")
+        time.sleep(1)
+
     print("Arming motors")
     # Copter should arm in GUIDED mode
     vehicle.mode = VehicleMode("GUIDED")
     vehicle.armed = True
+
     time.sleep(5) # So the UAV does not takeoff immediately after
 
 def arm_no_failsafe(vehicle):
