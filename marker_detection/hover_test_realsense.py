@@ -16,7 +16,7 @@ from slam_evaluation import realsense_localization
 from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
 
 TARGET_ALTITUDE = 1 # Meters
-DEFAULT_FREQ = 30 # Hz
+DEFAULT_FREQ = 20 # Hz
 DEFAULT_MARKER = "aruco"
 
 #Set up option parsing to get connection string
@@ -89,16 +89,16 @@ def marker_hover(vehicle, marker_tracker):
             marker_pose = marker_tracker.get_pose()
 
             # Transform pose to UAV body frame
-            marker_pose_body_ref = marker_ref_to_body_ref(marker_pose)
+            marker_pose_body_ref = 0.5 * marker_ref_to_body_ref(marker_pose)
 
             # Send position command to the vehicle
             dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                                 forward=marker_pose_body_ref[0],
                                                                 right=marker_pose_body_ref[1],
-                                                                down=0)
+                                                                down=-1 - marker_pose_body_ref[2])
 
-            if args["debug"]:
-                print("Nav Command: {}".format(marker_pose_body_ref))
+            #if args["debug"]:
+             #   print("Nav Command: {}".format(marker_pose_body_ref))
 
         # Maintain frequency of sending commands
         marker_tracker.wait()
