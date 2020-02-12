@@ -92,19 +92,19 @@ def marker_hover(vehicle, marker_tracker):
             marker_pose = marker_tracker.get_pose()
 
             # Transform pose to UAV body frame
-            marker_pose_body_ref = 0.5 * marker_ref_to_body_ref(marker_pose)
+            marker_pose_body_ref = 0.75 * marker_ref_to_body_ref(marker_pose)
 
-            if not land_ready and marker_pose_body_ref[0] < 0.1 and marker_pose_body_ref[1] < 0.1:
+            if not land_ready and np.absolute(marker_pose_body_ref[0]) < 0.2 and np.absolute(marker_pose_body_ref[1]) < 0.2:
                 start_time = time.time()
                 land_ready = True
-
-            if marker_pose_body_ref[0] < 0.1 and marker_pose_body_ref[1] < 0.1:
+                print("initiating landing")
+            if np.absolute(marker_pose_body_ref[0]) > 0.2 and np.absolute(marker_pose_body_ref[1]) > 0.2:
                 land_ready = False
-
-            if land_ready and time.time() - start_time > 5:
+            
+            if land_ready and time.time() - start_time > 2:
                 z_offset += 0.00424
 
-            if marker_pose_body_ref[2] < 0.2:
+            if marker_pose_body_ref[2] > -0.35:
                 dronekit_utils.land(vehicle)
             else:
                 # Send position command to the vehicle
