@@ -116,7 +116,8 @@ class MarkerTracker(VideoStreamer):
         try:
             time.sleep(self.period - (time.time() - self.cur_frame_time))
         except IOError:
-            print("WARNING: Desired frequency is too fast")
+            pass
+            #print("WARNING: Desired frequency is too fast")
 
     def stop(self):
         self.vs.stop()
@@ -507,7 +508,7 @@ class ArucoTracker(MarkerTracker):
             # Put marker pose on image
             str_position = "Marker Position (m) x=%2.2f y=%2.2f z=%2.2f"%(self.pose[0], self.pose[1], self.pose[2])
             cv2.putText(self.detected_frame, str_position, (0, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0))
-            print("Marker Pose: {}".format(self.pose))
+            #print("Marker Pose: {}".format(self.pose))
 
         # Draw UAV body axis for reference
         cv2.line(self.detected_frame,

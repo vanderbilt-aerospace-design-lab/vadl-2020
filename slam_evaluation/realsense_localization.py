@@ -21,7 +21,7 @@ from marker_detection.camera import Realsense
 # 0 is sideways 45 degrees
 # 1 is forward facing
 # 2 is downward facing
-REALSENSE_ORIENTATION = 1
+REALSENSE_ORIENTATION = 2
 
 DATA_DIR = "./slam_evaluation/data"
 RS_FILE_BASE = "rs_pose"
@@ -60,7 +60,7 @@ home_lon = 0
 home_alt = 0
 
 scale_calib_enable = 0
-debug_enable = 1
+debug_enable = 0
 
 # pose data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
 pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
@@ -118,13 +118,13 @@ elif REALSENSE_ORIENTATION == 1:
 else:
 
     # Downfacing, USB port to the right
-    H0_1 = np.array([[0, 0, -1, 0],
-                     [1, 0, 0, 0],
+    H0_1 = np.array([[0, 0, 1, 0],
+                     [-1, 0, 0, 0],
                      [0, -1, 0, 0],
                      [0, 0, 0, 1]])
 
-    H3_2 = np.array([[0, 1, 0, 0],
-                     [1, 0, 0, 0],
+    H3_2 = np.array([[0, -1, 0, 0],
+                     [-1, 0, 0, 0],
                      [0, 0, -1, 0],
                      [0, 0, 0, 1]])
 
