@@ -128,6 +128,11 @@ else:
                      [0, 0, -1, 0],
                      [0, 0, 0, 1]])
 
+
+def rs_to_body(H1_3):
+    return (H0_1.dot(H1_3)).dot(H3_2)
+
+
 vehicle = None
 H0_2 = None
 current_time = None
@@ -264,7 +269,7 @@ def localize(rs, sched=None):
                 H1_3[2][3] = data.translation.z * scale_factor
 
                 # Transform to aeronautic coordinates (body AND reference frame!)
-                H0_2 = (H0_1.dot(H1_3)).dot(H3_2)
+                H0_2 = rs_to_body(H1_3)
 
                 # Take offsets from body's center of gravity (or IMU) to camera's origin into account
                 if body_offset_enabled == 1:
@@ -315,12 +320,13 @@ def localize(rs, sched=None):
         print("Realsense pipeline and vehicle object closed.")
         sys.exit()
 
-def start(vehicle_object, scheduler=None):
+def start(vehicle_object, rs=None, scheduler=None):
     global vehicle
     vehicle = vehicle_object
 
     # Create realsense object
-    rs = Realsense()
+    if rs is None:
+        rs = Realsense()
 
     # Spawn a thread to transform realsense pose to UAV pose and send vision_position_estimate messages to
     # Mavlink in the background
