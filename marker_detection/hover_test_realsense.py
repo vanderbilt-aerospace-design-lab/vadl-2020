@@ -12,6 +12,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # Custom packages
 from utils import dronekit_utils
+from simple_pid import PID
 from slam_evaluation import realsense_localization
 from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
 
@@ -77,6 +78,9 @@ def marker_ref_to_body_ref(marker_pose):
 
 def marker_hover(vehicle, marker_tracker):
 
+    pid = PID(.75, 0.1, 0.05, setpoint=0)
+    pid.sample_time = 0.01
+
     # Hover until manual override
     land_ready = False
     z_offset = 0
@@ -109,6 +113,8 @@ def marker_hover(vehicle, marker_tracker):
             x_avg = np.average(x_queue)
             y_avg = np.average(y_queue)
             z_avg = np.average(z_queue)
+
+            command = pid([x_avg, y_avg, z_avg])
 
             if not land_ready and marker_pose_body_ref[0] < 0.1 and marker_pose_body_ref[1] < 0.1:
                 start_time = time.time()
