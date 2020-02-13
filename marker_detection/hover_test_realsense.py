@@ -78,18 +78,21 @@ def marker_ref_to_body_ref(marker_pose):
 
 def marker_hover(vehicle, marker_tracker):
 
-    pid = PID(.75, 0.1, 0.05, setpoint=0)
-    pid.sample_time = 0.01
+    pid_x = PID(1, 0, 0, setpoint=0)
+    pid_y = PID(1, 0, 0, setpoint=0)
+    pid_z = PID(1, 0, 0, setpoint=-1)
+
+    pid_x.sample_time = 0.01
+    pid_y.sample_time = 0.01
+    pid_z.sample_time = 0.01
 
     # Hover until manual override
-    land_ready = False
-    z_offset = 0
-    start_time = 0
     x_queue = []
     y_queue = []
     z_queue = []
     print("Tracking marker...")
-    while vehicle.mode == VehicleMode("GUIDED"):
+    while True:
+    # while vehicle.mode == VehicleMode("GUIDED"):
 
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
@@ -99,11 +102,15 @@ def marker_hover(vehicle, marker_tracker):
             marker_pose = marker_tracker.get_pose()
 
             # Transform pose to UAV body frame; proportional gain
-            marker_pose_body_ref = 0.5 * marker_ref_to_body_ref(marker_pose)
+            marker_pose_body_ref = marker_ref_to_body_ref(marker_pose)
 
-            x_queue.append(marker_pose_body_ref[0])
-            y_queue.append(marker_pose_body_ref[1])
-            z_queue.append(marker_pose_body_ref[2])
+            x = -pid_x(marker_pose_body_ref[0])
+            y = -pid_y(marker_pose_body_ref[1])
+            z = -pid_z(marker_pose_body_ref[2])
+
+            x_queue.append(x)
+            y_queue.append(y)
+            z_queue.append(z)
 
             if len(x_queue) > 10:
                 x_queue.pop(0)
@@ -114,26 +121,13 @@ def marker_hover(vehicle, marker_tracker):
             y_avg = np.average(y_queue)
             z_avg = np.average(z_queue)
 
-            command = pid([x_avg, y_avg, z_avg])
+            print(x_avg, y_avg, z_avg)
 
-            if not land_ready and marker_pose_body_ref[0] < 0.1 and marker_pose_body_ref[1] < 0.1:
-                start_time = time.time()
-                land_ready = True
-
-            if marker_pose_body_ref[0] < 0.1 and marker_pose_body_ref[1] < 0.1:
-                land_ready = False
-
-            if land_ready and time.time() - start_time > 5:
-                z_offset += 0.00424
-
-            if marker_pose_body_ref[2] < 0.2:
-                dronekit_utils.land(vehicle)
-            else:
-                # Send position command to the vehicle
-                dronekit_utils.goto_position_target_body_offset_ned(vehicle,
-                                                                    forward=x_avg,
-                                                                    right=y_avg,
-                                                                    down=-1 - z_avg + z_offset)
+            # Send position command to the vehicle
+            dronekit_utils.goto_position_target_body_offset_ned(vehicle,
+                                                                forward=x_avg,
+                                                                right=y_avg,
+                                                                down=z_avg)
 
 
             #if args["debug"]:
@@ -170,22 +164,22 @@ def main():
     vehicle = dronekit_utils.connect_vehicle_args(args)
 
     # Create a scheduler to send Mavlink commands in the background
-    sched = BackgroundScheduler()
-
-    # Begin realsense localization in the background
-    realsense_localization.start(vehicle, sched)
-
-    # Arm the UAV
-    dronekit_utils.arm_realsense_mode(vehicle)
-
-    # Takeoff and fly to a target altitude
-    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
-
-    # Give time to stabilize in flight
-    time.sleep(5)
-
-    # Set the UAV speed
-    vehicle.airspeed = 0.10
+    # sched = BackgroundScheduler()
+    #
+    # # Begin realsense localization in the background
+    # realsense_localization.start(vehicle, sched)
+    #
+    # # Arm the UAV
+    # dronekit_utils.arm_realsense_mode(vehicle)
+    #
+    # # Takeoff and fly to a target altitude
+    # dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    #
+    # # Give time to stabilize in flight
+    # time.sleep(5)
+    #
+    # # Set the UAV speed
+    # vehicle.airspeed = 0.10
 
     # Maintain hover over a marker
     marker_hover(vehicle, marker_tracker)
