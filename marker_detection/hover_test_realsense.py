@@ -24,7 +24,10 @@ DEFAULT_MARKER = "aruco"
 
 VEHICLE_POSE_DIR = "marker_detection/pose_data"
 VEHICLE_POSE_BASE = "vehicle_pose"
+PID_POSE_BASE = "marker_pose"
 VEHICLE_POSE_FILE = file_utils.create_file_name_chronological(VEHICLE_POSE_DIR, VEHICLE_POSE_BASE, "txt")
+PID_POSE_FILE = file_utils.create_file_name_chronological(VEHICLE_POSE_DIR, PID_POSE_BASE, "txt")
+
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
@@ -101,6 +104,7 @@ def marker_hover(vehicle, marker_tracker, rs=None):
 
     if args["debug"] > 0:
         vehicle_pose_file = file_utils.open_file(VEHICLE_POSE_FILE)
+        pid_pose_file = file_utils.open_file(PID_POSE_FILE)
 
     start_time = time.time()
     print("Tracking marker...")
@@ -158,6 +162,10 @@ def marker_hover(vehicle, marker_tracker, rs=None):
                                                                      vehicle_trans[0],
                                                                      vehicle_trans[1],
                                                                      vehicle_trans[2]))
+                pid_pose_file.write("{} {} {} {} 0 0 0 0\n".format(time.time() - start_time,
+                                                                   x_avg,
+                                                                   y_avg,
+                                                                   z_avg))
 
             if args["debug"] > 2:
                print("Nav Command: {}".format(marker_pose_body_ref))
