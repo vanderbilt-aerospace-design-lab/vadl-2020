@@ -171,8 +171,8 @@ class Realsense(Camera):
         super(Realsense, self).__init__()
 
         self.pipe = self.connect()
+        self.pose_frame = None
         self.data = None
-        self.pose_object = None
         self.pose = None
         self.quaternion = None
 
@@ -203,13 +203,13 @@ class Realsense(Camera):
         frames = self.pipe.wait_for_frames()
 
         # Get pose frame
-        self.data = frames.get_pose_frame()
+        self.pose_frame = frames.get_pose_frame()
 
         if self.is_tracking():
 
             # Pose data consists of translation and rotation
-            self.pose_object = self.data.get_pose_data()
-            return self.pose_object
+            self.data = self.pose_frame.get_pose_data()
+            return self.data
 
         else:
             # TODO: Implement behavior for when pose is not returned
@@ -221,32 +221,35 @@ class Realsense(Camera):
         frames = self.pipe.wait_for_frames()
 
         # Get pose frame
-        self.data = frames.get_pose_frame()
+        self.pose_frame = frames.get_pose_frame()
 
         if self.is_tracking():
 
             # Pose data consists of translation and rotation
-            self.pose_object = self.data.get_pose_data()
+            self.data = self.data.get_pose_data()
 
     def is_tracking(self):
-        return self.data
+        return self.pose_frame
 
     def read_pose(self):
         self.read()
-        self.pose = np.array([self.pose_object.translation.x,
-                              self.pose_object.translation.y,
-                              self.pose_object.translation.z])
+        self.pose = np.array([self.data.translation.x,
+                              self.data.translation.y,
+                              self.data.translation.z])
 
         return self.pose
+
+    def get_data(self):
+        return self.data
 
     def get_pose(self):
         return self.pose
 
     def get_quaternion(self):
-        self.quaternion = np.array([self.pose_object.rotation.w,
-                                    self.pose_object.rotation.x,
-                                    self.pose_object.rotation.y,
-                                    self.pose_object.rotation.z])
+        self.quaternion = np.array([self.data.rotation.w,
+                                    self.data.rotation.x,
+                                    self.data.rotation.y,
+                                    self.data.rotation.z])
         return self.quaternion
 
     # Terminate the capture thread.

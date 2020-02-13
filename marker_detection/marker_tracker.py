@@ -58,12 +58,7 @@ class MarkerTracker(VideoStreamer):
         self.focal_length = self.camera_mat[1][1]
 
         # Save video and pose file
-        if self.debug:
-            self.video_writer = VideoWriter(video_dir=video_dir,
-                                            video_file=video_file,
-                                            resolution=resolution,
-                                            framerate=framerate)
-
+        if self.debug > 0 :
             # Create pose file name and open it
             # Name can be accepted by itself or with ".txt" at the end
             if pose_file is None:
@@ -74,6 +69,12 @@ class MarkerTracker(VideoStreamer):
                 self.pose_file = POSE_DIR + "/" + pose_file
 
             self.pose_file = file_utils.open_file(self.pose_file)
+
+        if self.debug > 1:
+            self.video_writer = VideoWriter(video_dir=video_dir,
+                                            video_file=video_file,
+                                            resolution=resolution,
+                                            framerate=framerate)
 
         self.start_time = time.time()
 
@@ -116,12 +117,12 @@ class MarkerTracker(VideoStreamer):
         try:
             time.sleep(self.period - (time.time() - self.cur_frame_time))
         except IOError:
-            pass
-            #print("WARNING: Desired frequency is too fast")
+            if self.debug > 2:
+                print("WARNING: Desired frequency is too fast")
 
     def stop(self):
         self.vs.stop()
-        if self.debug:
+        if self.debug > 1:
             self.video_writer.stop()
 
     # Used for debugging or recording purposes. Saves the pose to a .txt file.
@@ -295,20 +296,22 @@ class ColorMarkerTracker(MarkerTracker):
 
                 # Debug
                 self.marker_found = True
-                if self.get_debug():
+                if self.debug > 0:
+                    self.save_pose()
+                if self.debug > 1:
                     self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
                                                                cX, cY, self.depth, c)
                     self.visualize()
-                    self.save_pose()
 
                 return True
 
         # Debug
         self.pose = None
         self.marker_found = False
-        if self.get_debug():
-            self.visualize()
+        if self.debug > 0:
             self.save_pose()
+        if self.debug > 1:
+            self.visualize()
 
         return False
 
@@ -316,7 +319,7 @@ class ColorMarkerTracker(MarkerTracker):
     def visualize(self):
         if not self.marker_found:
             self.detected_frame = self.cur_frame
-        else:
+        elif self.debug > 2:
             print("Marker Pose: {}".format(self.pose))
 
         if self.use_pi:
@@ -402,7 +405,6 @@ class ColorMarkerTracker(MarkerTracker):
 
     def calculate_scale_factor(self, peri):
         # Find the distance to the platform
-        # TODO: This will most likely be replaced with depth from the Realsense camera
         pixel_length = peri / 4
         self.depth = (self.focal_length / pixel_length) * self.marker_length
 
@@ -482,7 +484,9 @@ class ArucoTracker(MarkerTracker):
 
             # Debug
             self.marker_found = True
-            if self.get_debug():
+            if self.debug > 0:
+                self.save_pose()
+            if self.debug > 1:
                 if self.detected_frame is None:
                     self.detected_frame = self.cur_frame
 
@@ -490,14 +494,15 @@ class ArucoTracker(MarkerTracker):
                 self.detected_frame = aruco.drawAxis(self.cur_frame, self.camera_mat, self.dist_coeffs,
                                                      self.rvec, self.pose, 0.1)
                 self.visualize()
-                self.save_pose()
         else:
             # Debug
             self.pose = None
             self.marker_found = False
-            if self.get_debug():
-                self.visualize()
+            if self.debug > 0:
                 self.save_pose()
+            if self.debug > 1:
+                self.visualize()
+
 
     # Visualize the Aruco marker detection. If on the Pi, only saves a video, since the GUI may not be available.
     def visualize(self):
@@ -508,7 +513,9 @@ class ArucoTracker(MarkerTracker):
             # Put marker pose on image
             str_position = "Marker Position (m) x=%2.2f y=%2.2f z=%2.2f"%(self.pose[0], self.pose[1], self.pose[2])
             cv2.putText(self.detected_frame, str_position, (0, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0))
-            #print("Marker Pose: {}".format(self.pose))
+
+            if self.debug > 2:
+                print("Marker Pose: {}".format(self.pose))
 
         # Draw UAV body axis for reference
         cv2.line(self.detected_frame,

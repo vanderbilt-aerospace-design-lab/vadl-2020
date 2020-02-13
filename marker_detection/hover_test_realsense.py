@@ -7,17 +7,24 @@ import os
 import time
 import argparse
 import numpy as np
+import transformations as tf
 from dronekit import VehicleMode
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # Custom packages
-from utils import dronekit_utils
+from utils import dronekit_utils, file_utils
+from simple_pid import PID
 from slam_evaluation import realsense_localization
 from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
+from marker_detection.camera import Realsense
 
 TARGET_ALTITUDE = 1 # Meters
 DEFAULT_FREQ = 20 # Hz
 DEFAULT_MARKER = "aruco"
+
+VEHICLE_POSE_DIR = "marker_detection/pose_data"
+VEHICLE_POSE_BASE = "vehicle_pose"
+VEHICLE_POSE_FILE = file_utils.create_file_name_chronological(VEHICLE_POSE_DIR, VEHICLE_POSE_BASE, "txt")
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
@@ -27,8 +34,10 @@ parser.add_argument('-v','--video', default=0,
                     help="Play video instead of live stream.")
 parser.add_argument("-p", "--pi", type=int, default=1,
  	                help="Indicates whether or not the Raspberry Pi camera should be used. Defaults to Pi.")
-parser.add_argument('-d',"--debug", default=0,
-                    help="Whether or not videos and pose files should be saved and print statements are used.")
+parser.add_argument('-d',"--debug", default=0, type=int,
+                    help="Whether or not videos and pose files should be saved and print statements are used."
+                         "1 - save pose files, 2 - save pose files and videos, "
+                         "3 - save pose files and videos and print statements")
 parser.add_argument('-r','--resolution', type=int, default=480,
                     help="Camera resolution")
 parser.add_argument('-f','--fps', type=int, default=30,
@@ -75,17 +84,28 @@ def marker_ref_to_body_ref(marker_pose):
 
     return body_pose[:-1]
 
-def marker_hover(vehicle, marker_tracker):
+def marker_hover(vehicle, marker_tracker, rs=None):
+
+    pid_x = PID(1, 0, 0, setpoint=0)
+    pid_y = PID(1, 0, 0, setpoint=0)
+    pid_z = PID(1, 0, 0, setpoint=-1)
+
+    pid_x.sample_time = 0.01
+    pid_y.sample_time = 0.01
+    pid_z.sample_time = 0.01
 
     # Hover until manual override
-    land_ready = False
-    z_offset = 0
-    start_time = 0
     x_queue = []
     y_queue = []
     z_queue = []
+
+    if args["debug"] > 0:
+        vehicle_pose_file = file_utils.open_file(VEHICLE_POSE_FILE)
+
+    start_time = time.time()
     print("Tracking marker...")
-    while vehicle.mode == VehicleMode("GUIDED"):
+    while True:
+    # while vehicle.mode == VehicleMode("GUIDED"):
 
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
@@ -95,11 +115,15 @@ def marker_hover(vehicle, marker_tracker):
             marker_pose = marker_tracker.get_pose()
 
             # Transform pose to UAV body frame; proportional gain
-            marker_pose_body_ref = 0.75 * marker_ref_to_body_ref(marker_pose)
+            marker_pose_body_ref = marker_ref_to_body_ref(marker_pose)
 
-            x_queue.append(marker_pose_body_ref[0])
-            y_queue.append(marker_pose_body_ref[1])
-            z_queue.append(marker_pose_body_ref[2])
+            x = -pid_x(marker_pose_body_ref[0])
+            y = -pid_y(marker_pose_body_ref[1])
+            z = -pid_z(marker_pose_body_ref[2])
+
+            x_queue.append(x)
+            y_queue.append(y)
+            z_queue.append(z)
 
             if len(x_queue) > 10:
                 x_queue.pop(0)
@@ -110,28 +134,33 @@ def marker_hover(vehicle, marker_tracker):
             y_avg = np.average(y_queue)
             z_avg = np.average(z_queue)
 
-            if not land_ready and np.absolute(marker_pose_body_ref[0]) < 0.2 and np.absolute(marker_pose_body_ref[1]) < 0.2:
-                start_time = time.time()
-                land_ready = True
-                print("initiating landing")
-            if np.absolute(marker_pose_body_ref[0]) > 0.2 and np.absolute(marker_pose_body_ref[1]) > 0.2:
-                land_ready = False
-            
-            if land_ready and time.time() - start_time > 2:
-                z_offset += 0.0075
-
-            if marker_pose_body_ref[2] > -0.35:
-                dronekit_utils.land(vehicle)
-            else:
-                # Send position command to the vehicle
-                dronekit_utils.goto_position_target_body_offset_ned(vehicle,
-                                                                    forward=x_avg,
-                                                                    right=y_avg,
-                                                                    down=-1 - z_avg + z_offset)
+            # Send position command to the vehicle
+            dronekit_utils.goto_position_target_body_offset_ned(vehicle,
+                                                                forward=x_avg,
+                                                                right=y_avg,
+                                                                down=z_avg)
 
 
-            #if args["debug"]:
-             #   print("Nav Command: {}".format(marker_pose_body_ref))
+            if args["debug"] > 0 and rs is not None:
+                data = rs.read()
+                rs_pose = tf.quaternion_matrix([data.rotation.w,
+                                                     data.rotation.x,
+                                                     data.rotation.y,
+                                                     data.rotation.z])
+
+                rs_pose[0][3] = data.translation.x
+                rs_pose[1][3] = data.translation.y
+                rs_pose[2][3] = data.translation.z
+                vehicle_pose = realsense_localization.rs_to_body(rs_pose)
+                vehicle_trans = np.array(tf.translation_from_matrix(vehicle_pose))
+
+                vehicle_pose_file.write("{} {} {} {} 0 0 0 0\n".format(time.time() - start_time,
+                                                                     vehicle_trans[0],
+                                                                     vehicle_trans[1],
+                                                                     vehicle_trans[2]))
+
+            if args["debug"] > 2:
+               print("Nav Command: {}".format(marker_pose_body_ref))
 
         # Maintain frequency of sending commands
         marker_tracker.wait()
@@ -163,26 +192,28 @@ def main():
     # Connect to the Pixhawk
     vehicle = dronekit_utils.connect_vehicle_args(args)
 
+    rs = Realsense()
+
     # Create a scheduler to send Mavlink commands in the background
-    sched = BackgroundScheduler()
-
-    # Begin realsense localization in the background
-    realsense_localization.start(vehicle, sched)
-
-    # Arm the UAV
-    dronekit_utils.arm_realsense_mode(vehicle)
-
-    # Takeoff and fly to a target altitude
-    dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
-
-    # Give time to stabilize in flight
-    time.sleep(5)
-
-    # Set the UAV speed
-    vehicle.airspeed = 0.10
+    # sched = BackgroundScheduler()
+    #
+    # # Begin realsense localization in the background
+    # realsense_localization.start(vehicle, rs=rs, scheduler=sched)
+    #
+    # # Arm the UAV
+    # dronekit_utils.arm_realsense_mode(vehicle)
+    #
+    # # Takeoff and fly to a target altitude
+    # dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
+    #
+    # # Give time to stabilize in flight
+    # time.sleep(5)
+    #
+    # # Set the UAV speed
+    # vehicle.airspeed = 0.10
 
     # Maintain hover over a marker
-    marker_hover(vehicle, marker_tracker)
+    marker_hover(vehicle, marker_tracker, rs)
 
 if __name__ == "__main__":
     main()

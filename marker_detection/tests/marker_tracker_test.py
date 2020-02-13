@@ -40,6 +40,7 @@ else:
 
 def main():
     print("Initializing")
+
 #    tracker = ColorMarkerTracker(src=args["video"],
  #                                       use_pi=args["picamera"],
   #                                      resolution=args["resolution"],
@@ -55,10 +56,12 @@ def main():
                                  video_dir=args["dir"],
                                  video_file=args["name"],
                                  pose_file=args["pose_file"])
+
     print("Tracking")
     while True:
         tracker.track_marker()
-        if tracker.is_marker_found():
+        if tracker.is_marker_found():=
+            print("found")
             print(tracker.get_pose())
 
 
