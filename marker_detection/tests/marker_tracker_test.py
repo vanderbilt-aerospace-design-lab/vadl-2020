@@ -2,6 +2,8 @@ import os
 import argparse
 from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
 
+DEFAULT_MARKER = "yellow"
+
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Tests for marker detection')
 parser.add_argument('-v','--video', default=0,
@@ -14,6 +16,8 @@ parser.add_argument('-r','--resolution', type=int, default=480,
                     help="Camera resolution")
 parser.add_argument('-f','--fps', type=int, default=30,
                     help="Camera frame rate")
+parser.add_argument('--fps_vid', type=int, default=15,
+                    help="Saved video frame rate")
 parser.add_argument('--dir', default=None,
                     help="Directory to save file. Defaults to marker_detection/videos")
 parser.add_argument('-n','--name', default=None,
@@ -21,6 +25,8 @@ parser.add_argument('-n','--name', default=None,
 parser.add_argument('--pose_file', default=None,
                     help="Pose file name for debugging. Do not input directory, "
                          "just the file name w/ or w/o .txt at the end. If none specified, defaults to the current date.")
+parser.add_argument('-m', '--marker', default=DEFAULT_MARKER,
+                    help="Type of marker to track. 'aruco' or 'yellow'")
 
 args = vars(parser.parse_args())
 
@@ -53,6 +59,7 @@ def main():
                                  debug=args["debug"],
                                  resolution=args["resolution"],
                                  framerate=args["fps"],
+                                 fps_vid=args["fps_vid"],
                                  video_dir=args["dir"],
                                  video_file=args["name"],
                                  pose_file=args["pose_file"])
@@ -60,7 +67,7 @@ def main():
     print("Tracking")
     while True:
         tracker.track_marker()
-        if tracker.is_marker_found():=
+        if tracker.is_marker_found():
             print("found")
             print(tracker.get_pose())
 

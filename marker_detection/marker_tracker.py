@@ -30,6 +30,7 @@ class MarkerTracker(VideoStreamer):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
+                 fps_vid=15,
                  marker_length=0.24,
                  freq=DEFAULT_FREQ,
                  debug=0,
@@ -74,7 +75,7 @@ class MarkerTracker(VideoStreamer):
             self.video_writer = VideoWriter(video_dir=video_dir,
                                             video_file=video_file,
                                             resolution=resolution,
-                                            framerate=framerate)
+                                            framerate=fps_vid)
 
         self.start_time = time.time()
 
@@ -157,6 +158,7 @@ class ColorMarkerTracker(MarkerTracker):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
+                 fps_vid=15,
                  marker_length=0.24,
                  freq=DEFAULT_FREQ,
                  debug=0,
@@ -168,6 +170,7 @@ class ColorMarkerTracker(MarkerTracker):
                                                  use_pi=use_pi,
                                                  resolution=resolution,
                                                  framerate=framerate,
+                                                 fps_vid=fps_vid,
                                                  marker_length=marker_length,
                                                  freq=freq,
                                                  debug=debug,
@@ -433,6 +436,7 @@ class ArucoTracker(MarkerTracker):
                  use_pi=-1,
                  resolution=480,
                  framerate=30,
+                 fps_vid=15,
                  marker_length=0.159,
                  freq=DEFAULT_FREQ,
                  debug=0,
@@ -444,6 +448,7 @@ class ArucoTracker(MarkerTracker):
                                            use_pi=use_pi,
                                            resolution=resolution,
                                            framerate=framerate,
+                                           fps_vid=fps_vid,
                                            marker_length=marker_length,
                                            freq=freq,
                                            debug=debug,

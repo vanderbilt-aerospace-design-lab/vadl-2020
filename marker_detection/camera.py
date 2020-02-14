@@ -123,7 +123,7 @@ class VideoWriter(Camera):
                  video_file=None,
                  ext=".avi",
                  resolution=480,
-                 framerate=30):
+                 framerate=15):
 
         super(VideoWriter, self).__init__(resolution=resolution,
                                           framerate=framerate)
