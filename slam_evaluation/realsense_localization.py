@@ -21,7 +21,8 @@ from marker_detection.camera import Realsense
 # 0 is sideways 45 degrees
 # 1 is forward facing
 # 2 is downward facing
-REALSENSE_ORIENTATION = 2
+# 3 is sideways downward, usb towards the front
+REALSENSE_ORIENTATION = 3
 
 DATA_DIR = "./slam_evaluation/data"
 RS_FILE_BASE = "rs_pose"
@@ -115,7 +116,7 @@ elif REALSENSE_ORIENTATION == 1:
                      [0, -1, 0, 0],
                      [0, 0, 0, 1]])
     H3_2 = np.linalg.inv(H0_1)
-else:
+elif REALSENSE_ORIENTATION == 2:
 
     # Downfacing, USB port to the right
     H0_1 = np.array([[0, 0, 1, 0],
@@ -125,6 +126,17 @@ else:
 
     H3_2 = np.array([[0, -1, 0, 0],
                      [-1, 0, 0, 0],
+                     [0, 0, -1, 0],
+                     [0, 0, 0, 1]])
+else:
+
+    # Sideways, downward, USB portforward
+    H0_1 = np.array([[1, 0, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
+    H3_2 = np.array([[1, 0, 0, 0],
+                     [0, -1, 0, 0],
                      [0, 0, -1, 0],
                      [0, 0, 0, 1]])
 
