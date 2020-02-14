@@ -13,12 +13,12 @@ from utils import file_utils
 
 DATA_DIR = "/home/vadl/catkin_ws/src/vadl-2020/slam_evaluation/data"
 RS_FILE_BASE = "rs_pose"
-ACCEL_FILE_BASE = "rs_accel"
-RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
-RS_ACCEL_FILE = file_utils.create_file_name_chronological(DATA_DIR, ACCEL_FILE_BASE, "txt")
+#ACCEL_FILE_BASE = "rs_accel"
+RS_POSE_FILE = RS_FILE_BASE + "/" + file_utils.create_file_name_date() + ".txt"
+#RS_ACCEL_FILE = file_utils.create_file_name_chronological(DATA_DIR, ACCEL_FILE_BASE, "txt")
 # pose files to save to
 rs_pose_file = file_utils.open_file(RS_POSE_FILE)
-rs_accel_file = file_utils.open_file(RS_ACCEL_FILE)
+#rs_accel_file = file_utils.open_file(RS_ACCEL_FILE)
 
 #######################################
 # Parameters
@@ -194,10 +194,10 @@ try:
                                str(data.rotation.x) + " " +
                                str(data.rotation.y) + " " +
                                str(data.rotation.z) + "\n")
-            rs_accel_file.write(str(timestamp) + " " +
-                                str(data.acceleration.x) + " " +
-                                str(data.acceleration.y) + " " +
-                                str(data.acceleration.z) + "\n")
+            # rs_accel_file.write(str(timestamp) + " " +
+            #                     str(data.acceleration.x) + " " +
+            #                     str(data.acceleration.y) + " " +
+            #                     str(data.acceleration.z) + "\n")
 
             # Show debug messages here
             if debug_enable == 1:
