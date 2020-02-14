@@ -19,6 +19,7 @@ from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
 from marker_detection.camera import Realsense
 
 TARGET_ALTITUDE = 1 # Meters
+HOVER_ALTITUDE = 1 # Meters
 DEFAULT_FREQ = 20 # Hz
 DEFAULT_MARKER = "aruco"
 
@@ -71,13 +72,13 @@ def marker_ref_to_body_ref(marker_pose):
         # Aruco marker
         body_transform = np.array([[0, -1, 0, 0],
                                    [1, 0, 0, 0],
-                                   [0, 0, -1, 0],
+                                   [0, 0, 1, 0],
                                    [0, 0, 0, 1]])
     else:
         # Yellow marker
         body_transform = np.array([[0, -1, 0, 0],
                                    [-1, 0, 0, 0],
-                                   [0, 0, -1, 0],
+                                   [0, 0, 1, 0],
                                    [0, 0, 0, 1]])
 
     # Transform to body pose
@@ -89,7 +90,7 @@ def marker_hover(vehicle, marker_tracker, rs=None):
 
     pid_x = PID(1, 0, 0, setpoint=0)
     pid_y = PID(1, 0, 0, setpoint=0)
-    pid_z = PID(1, 0, 0, setpoint=-1)
+    pid_z = PID(1, 0, 0, setpoint=-0.5)
 
     pid_x.sample_time = 0.01
     pid_y.sample_time = 0.01
@@ -118,9 +119,10 @@ def marker_hover(vehicle, marker_tracker, rs=None):
             # Transform pose to UAV body frame; proportional gain
             marker_pose_body_ref = marker_ref_to_body_ref(marker_pose)
 
-            x = -pid_x(marker_pose_body_ref[0])
-            y = -pid_y(marker_pose_body_ref[1])
-            z = -pid_z(marker_pose_body_ref[2])
+            # Pid response, input is UAV rel. to marker
+            x = pid_x(-marker_pose_body_ref[0])
+            y = pid_y(-marker_pose_body_ref[1])
+            z = pid_z(-marker_pose_body_ref[2])
 
             x_queue.append(x)
             y_queue.append(y)
@@ -139,7 +141,7 @@ def marker_hover(vehicle, marker_tracker, rs=None):
             dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                                 forward=x_avg,
                                                                 right=y_avg,
-                                                                down=z_avg)
+                                                                down= -HOVER_ALTITUDE - z_avg)
 
 
             if args["debug"] > 0 and rs is not None:
@@ -161,7 +163,7 @@ def marker_hover(vehicle, marker_tracker, rs=None):
                                                                      vehicle_trans[2]))
 
             if args["debug"] > 2:
-               print("Nav Command: {}".format(marker_pose_body_ref))
+               print("Nav command: {} {} {}".format(x_avg, y_avg, z_avg))
 
         # Maintain frequency of sending commands
         marker_tracker.wait()
@@ -197,20 +199,20 @@ def main():
 
     # Create a scheduler to send Mavlink commands in the background
     # sched = BackgroundScheduler()
-    #
-    # # Begin realsense localization in the background
+
+    # Begin realsense localization in the background
     # realsense_localization.start(vehicle, rs=rs, scheduler=sched)
-    #
-    # # Arm the UAV
+
+    # Arm the UAV
     # dronekit_utils.arm_realsense_mode(vehicle)
-    #
-    # # Takeoff and fly to a target altitude
+
+    # Takeoff and fly to a target altitude
     # dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
-    #
-    # # Give time to stabilize in flight
+
+    # Give time to stabilize in flight
     # time.sleep(5)
-    #
-    # # Set the UAV speed
+
+    # Set the UAV speed
     # vehicle.airspeed = 0.10
 
     # Maintain hover over a marker
