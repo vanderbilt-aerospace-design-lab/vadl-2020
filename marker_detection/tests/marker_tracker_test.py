@@ -10,7 +10,7 @@ parser.add_argument('-v','--video', default=0,
                     help="Play video instead of live stream.")
 parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
-parser.add_argument('-d',"--debug", default=0,
+parser.add_argument('-d',"--debug", default=0, type=int,
                    help="Whether or not videos should be saved and print statements should be used.")
 parser.add_argument('-r','--resolution', type=int, default=480,
                     help="Camera resolution")

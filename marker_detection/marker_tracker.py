@@ -9,8 +9,8 @@ import os
 import time
 from utils import file_utils
 
-CALIBRATION_FILE = "camera_calibration/calibration_parameters/arducam.yaml"
-POSE_DIR = "marker_detection/pose_data"
+CALIBRATION_FILE = "/home/vadl/catkin_ws/src/vadl-2020/camera_calibration/calibration_parameters/arducam.yaml"
+POSE_DIR = "/home/vadl/catkin_ws/src/vadl-2020/marker_detection/pose_data"
 file_utils.make_dir(POSE_DIR)
 POSE_FILE = file_utils.create_file_name_date() + ".txt" # Default pose file name
 

@@ -12,9 +12,9 @@ from marker_detection.camera import Realsense
 from utils import file_utils
 
 DATA_DIR = "/home/vadl/catkin_ws/src/vadl-2020/slam_evaluation/data"
-RS_FILE_BASE = "rs_pose"
+#RS_FILE_BASE = "rs_pose"
 #ACCEL_FILE_BASE = "rs_accel"
-RS_POSE_FILE = RS_FILE_BASE + "/" + file_utils.create_file_name_date() + ".txt"
+RS_POSE_FILE = DATA_DIR + "/" + file_utils.create_file_name_date() + ".txt"
 #RS_ACCEL_FILE = file_utils.create_file_name_chronological(DATA_DIR, ACCEL_FILE_BASE, "txt")
 # pose files to save to
 rs_pose_file = file_utils.open_file(RS_POSE_FILE)
@@ -151,6 +151,7 @@ else:
 print("INFO: Connecting to Realsense camera.")
 rs = Realsense()
 print("INFO: Realsense connected.")
+print("Logging data...")
 start_time = time.time()
 try:
     while True:
