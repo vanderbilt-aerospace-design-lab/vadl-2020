@@ -163,7 +163,7 @@ class ColorMarkerTracker(MarkerTracker):
                  resolution=480,
                  framerate=30,
                  fps_vid=15,
-                 marker_length=2.44,
+                 marker_length=0.24,
                  freq=DEFAULT_FREQ,
                  debug=0,
                  video_dir=None,
