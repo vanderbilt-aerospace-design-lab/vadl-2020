@@ -300,7 +300,7 @@ class ColorMarkerTracker(MarkerTracker):
                 err_x *= self.scale_factor
                 err_y *= self.scale_factor
 
-                self.set_pose(np.array([err_x, err_y, 0]))
+                self.set_pose(np.array([err_x, err_y, self.depth]))
 
                 # Debug
                 self.marker_found = True

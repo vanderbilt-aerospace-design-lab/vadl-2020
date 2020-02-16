@@ -105,7 +105,7 @@ def alt_hover(vehicle, pose_avg, hover_alt):
     dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                         forward=pose_avg[0],
                                                         right=pose_avg[1],
-                                                        down=-hover_alt - pose_avg[2])
+                                                        down=-hover_alt + pose_avg[2])
 
 # Detect a marker and hover above it. The vehicle will remain still until a marker is detected. Then it will approach
 # the marker at the current altitude until it is directly above the marker. Finally, the vehicle will ascend/descend
@@ -126,8 +126,8 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
     start_time = time.time()
     time_found = time.time()
     print("Tracking marker...")
-    # while True:
-    while vehicle.mode == VehicleMode("GUIDED"):
+    while True:
+    # while vehicle.mode == VehicleMode("GUIDED"):
 
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
