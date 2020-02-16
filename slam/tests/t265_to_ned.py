@@ -11,7 +11,7 @@ import argparse
 from marker_detection.camera import Realsense
 from utils import file_utils
 
-DATA_DIR = "slam_evaluation/data"
+DATA_DIR = "slam/data"
 RS_FILE_BASE = "rs_pose"
 #ACCEL_FILE_BASE = "rs_accel"
 RS_POSE_FILE = DATA_DIR + "/" + file_utils.create_file_name_date() + ".txt"
@@ -151,6 +151,7 @@ else:
 print("INFO: Connecting to Realsense camera.")
 rs = Realsense()
 print("INFO: Realsense connected.")
+print("Logging data...")
 start_time = time.time()
 try:
     while True:

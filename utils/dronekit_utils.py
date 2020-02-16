@@ -133,6 +133,17 @@ def wait_for_home_location(vehicle):
         print("Waiting for home location")
         time.sleep(0.5)
 
+def is_guided(vehicle):
+    return vehicle.mode == VehicleMode("GUIDED")
+
+# Move the vehicle up or down
+def move_relative_alt(vehicle, rel_alt=None):
+    if rel_alt is not None:
+        goto_position_target_body_offset_ned(vehicle,
+                                             forward=0,
+                                             right=0,
+                                             down=-rel_alt + vehicle.location.global_relative_frame.alt)
+
 def goto_position_target_local_offset_ned(vehicle, north, east, down):
     """
     Send SET_POSITION_TARGET_LOCAL_NED command to request the vehicle fly to a specified

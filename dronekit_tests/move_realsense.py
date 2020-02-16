@@ -1,6 +1,6 @@
 import time
 from utils import dronekit_utils
-from slam_evaluation import realsense_localization
+from slam import realsense_localization
 from apscheduler.schedulers.background import BackgroundScheduler
 
 ''' Test script for auto takeoff and landing'''

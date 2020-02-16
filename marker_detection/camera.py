@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/usr/local/lib")
 import time
 from imutils.video import VideoStream
 from imutils.video import FileVideoStream
@@ -10,7 +12,7 @@ import os
 from utils import file_utils
 
 # specify as relative or absolute
-VIDEO_DIR = "marker_detection/videos"
+VIDEO_DIR = "marker_detection/logs/videos"
 # unnamed video will be named with datetime
 VIDEO_NAME = file_utils.create_file_name_date()
 

@@ -24,7 +24,7 @@ from marker_detection.camera import Realsense
 # 3 is sideways downward, usb towards the front
 REALSENSE_ORIENTATION = 3
 
-DATA_DIR = "./slam_evaluation/data"
+DATA_DIR = "slam/data"
 RS_FILE_BASE = "rs_pose"
 ACCEL_FILE_BASE = "rs_accel"
 RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")

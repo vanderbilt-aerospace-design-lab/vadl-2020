@@ -9,8 +9,8 @@ os.environ["MAVLINK20"] = "1"
 # Import the libraries
 import pyrealsense2 as rs
 
-RS_POSE_FILE = "./slam_evaluation/data/pose"
-RS_ACCEL_FILE = "./slam_evaluation/data/rs_accel"
+RS_POSE_FILE = "./slam/data/pose"
+RS_ACCEL_FILE = "./slam/data/rs_accel"
 
 
 def realsense_connect():

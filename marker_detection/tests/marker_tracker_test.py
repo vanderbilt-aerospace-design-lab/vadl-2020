@@ -10,7 +10,7 @@ parser.add_argument('-v','--video', default=0,
                     help="Play video instead of live stream.")
 parser.add_argument("-p", "--picamera", type=int, default=-1,
  	help="Indicates whether or not the Raspberry Pi camera should be used")
-parser.add_argument('-d',"--debug", default=0,
+parser.add_argument('-d',"--debug", default=0, type=int,
                    help="Whether or not videos should be saved and print statements should be used.")
 parser.add_argument('-r','--resolution', type=int, default=480,
                     help="Camera resolution")
@@ -46,45 +46,30 @@ else:
 
 def main():
     print("Initializing")
-
-#    tracker = ColorMarkerTracker(src=args["video"],
- #                                       use_pi=args["picamera"],
-  #                                      resolution=args["resolution"],
-   #                                     framerate=args["fps"],
-    #                                    debug=args["debug"],
-     #                                   video_dir=args["dir"],
-      #                                  video_file=args["name"])
-    tracker = ArucoTracker(src=args["video"],
-                                 use_pi=args["picamera"],
-                                 debug=args["debug"],
-                                 resolution=args["resolution"],
-                                 framerate=args["fps"],
-                                 fps_vid=args["fps_vid"],
-                                 video_dir=args["dir"],
-                                 video_file=args["name"],
-                                 pose_file=args["pose_file"])
+    if args["marker"] == "yellow":
+       tracker = ColorMarkerTracker(src=args["video"],
+                                           use_pi=args["picamera"],
+                                           resolution=args["resolution"],
+                                           framerate=args["fps"],
+                                           debug=args["debug"],
+                                           video_dir=args["dir"],
+                                           video_file=args["name"])
+    else:
+        tracker = ArucoTracker(src=args["video"],
+                                     use_pi=args["picamera"],
+                                     debug=args["debug"],
+                                     resolution=args["resolution"],
+                                     framerate=args["fps"],
+                                     fps_vid=args["fps_vid"],
+                                     video_dir=args["dir"],
+                                     video_file=args["name"],
+                                     pose_file=args["pose_file"])
 
     print("Tracking")
     while True:
-        tracker.track_marker()
+        tracker.track_marker(alt=0)
         if tracker.is_marker_found():
-            print("found")
             print(tracker.get_pose())
-
-
-    #aruco_tracker = ArucoTracker(src=args["video"],
-    #                             use_pi=args["picamera"],
-    #                             debug=args["debug"],
-    #                             resolution=args["resolution"],
-    #                             framerate=args["fps"],
-    #                             video_dir=args["dir"],
-    #                             video_file=args["name"])
-    #print("Tracking")
-    #while True:
-    #    aruco_tracker.track_marker()
-    #    if aruco_tracker.is_marker_found():
-    #        print("found")
-    #        print(aruco_tracker.get_pose())
 
 if __name__ == "__main__":
     main()

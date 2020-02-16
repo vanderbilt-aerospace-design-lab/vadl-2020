@@ -9,7 +9,7 @@ os.environ["MAVLINK20"] = "1"
 
 # Import the libraries
 import pyrealsense2 as rs
-DATA_DIR = "/home/vadl/catkin_ws/src/vadl-2020/slam_evaluation/data"
+DATA_DIR = "slam/data"
 RS_FILE_BASE = "rs_pose"
 ACCEL_FILE_BASE = "rs_accel"
 RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")

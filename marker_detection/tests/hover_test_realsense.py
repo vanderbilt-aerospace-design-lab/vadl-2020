@@ -14,7 +14,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 # Custom packages
 from utils import dronekit_utils, file_utils
 from simple_pid import PID
-from slam_evaluation import realsense_localization
+from slam import realsense_localization
 from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
 from marker_detection.camera import Realsense
 
@@ -22,8 +22,9 @@ TARGET_ALTITUDE = 1 # Meters
 HOVER_ALTITUDE = 1 # Meters
 DEFAULT_FREQ = 20 # Hz
 DEFAULT_MARKER = "aruco"
+RUNNING_AVG_LENGTH = 10
 
-VEHICLE_POSE_DIR = "marker_detection/pose_data"
+VEHICLE_POSE_DIR = "marker_detection/logs/pose_data"
 VEHICLE_POSE_BASE = "vehicle_pose"
 VEHICLE_POSE_FILE = file_utils.create_file_name_chronological(VEHICLE_POSE_DIR, VEHICLE_POSE_BASE, "txt")
 
@@ -51,7 +52,7 @@ parser.add_argument('-n','--name', default=None,
 parser.add_argument('--pose_file', default=None,
                     help="Pose file name for debugging. Do not input directory, "
                          "include .txt at the end. If no file specified, defaults to the current date.")
-parser.add_argument('-m', '--marker', default=DEFAULT_MARKER,
+parser.add_argument('-m', '--marker', default=DEFAULT_MARKER, type=str,
                     help="Type of marker to track. 'aruco' or 'yellow'")
 parser.add_argument('--frequency', default=DEFAULT_FREQ,
                     help="Frequency of marker tracking")
@@ -97,9 +98,8 @@ def marker_hover(vehicle, marker_tracker, rs=None):
     pid_z.sample_time = 0.01
 
     # Hover until manual override
-    x_queue = []
-    y_queue = []
-    z_queue = []
+    pose_queue = np.zeros((RUNNING_AVG_LENGTH, 3), dtype=float)
+    count=0
 
     if args["debug"] > 0:
         vehicle_pose_file = file_utils.open_file(VEHICLE_POSE_FILE)
@@ -120,28 +120,24 @@ def marker_hover(vehicle, marker_tracker, rs=None):
             marker_pose_body_ref = marker_ref_to_body_ref(marker_pose)
 
             # Pid response, input is UAV rel. to marker
-            x = pid_x(-marker_pose_body_ref[0])
-            y = pid_y(-marker_pose_body_ref[1])
-            z = pid_z(-marker_pose_body_ref[2])
+            control_pose = np.array([[pid_x(-marker_pose_body_ref[0]),
+                                     pid_y(-marker_pose_body_ref[1]),
+                                     pid_z(-marker_pose_body_ref[2])]])
 
-            x_queue.append(x)
-            y_queue.append(y)
-            z_queue.append(z)
+            # Keep a queue of recent marker poses
+            pose_queue[count % len(pose_queue)] = control_pose
+            count += 1
 
-            if len(x_queue) > 10:
-                x_queue.pop(0)
-                y_queue.pop(0)
-                z_queue.pop(0)
-
-            x_avg = np.average(x_queue)
-            y_avg = np.average(y_queue)
-            z_avg = np.average(z_queue)
+            if count < RUNNING_AVG_LENGTH - 1:
+                pose_avg = np.sum(pose_queue, axis=0) / count
+            else:
+                pose_avg = np.average(pose_queue, axis=0)
 
             # Send position command to the vehicle
             dronekit_utils.goto_position_target_body_offset_ned(vehicle,
-                                                                forward=x_avg,
-                                                                right=y_avg,
-                                                                down= -HOVER_ALTITUDE - z_avg)
+                                                                forward=pose_avg[0],
+                                                                right=pose_avg[1],
+                                                                down= -HOVER_ALTITUDE - pose_avg[2])
 
 
             if args["debug"] > 0 and rs is not None:
@@ -163,7 +159,7 @@ def marker_hover(vehicle, marker_tracker, rs=None):
                                                                      vehicle_trans[2]))
 
             if args["debug"] > 2:
-               print("Nav command: {} {} {}".format(x_avg, y_avg, z_avg))
+               print("Nav command: {} {} {}".format(pose_avg[0], pose_avg[1], pose_avg[2]))
 
         # Maintain frequency of sending commands
         marker_tracker.wait()

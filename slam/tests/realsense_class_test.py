@@ -4,7 +4,7 @@ import numpy as np
 import time
 from marker_detection.camera import Realsense
 
-RS_POSE_FILE = "./slam_evaluation/data/rs_pose"
+RS_POSE_FILE = "./slam/data/rs_pose"
 
 def test_rs(rs):
     rs_pose_file = open(RS_POSE_FILE + ".txt", "w")

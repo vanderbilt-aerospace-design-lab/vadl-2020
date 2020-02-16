@@ -10,7 +10,7 @@ import time
 from utils import file_utils
 
 CALIBRATION_FILE = "camera_calibration/calibration_parameters/arducam.yaml"
-POSE_DIR = "marker_detection/pose_data"
+POSE_DIR = "marker_detection/logs/pose_data"
 file_utils.make_dir(POSE_DIR)
 POSE_FILE = file_utils.create_file_name_date() + ".txt" # Default pose file name
 
@@ -53,6 +53,7 @@ class MarkerTracker(VideoStreamer):
         self.frequency = freq
         self.period = 1 / float(self.frequency)
         self.cur_frame_time = 0 # time at the beginning of tracking frame
+        self.marker_type = None
 
         # Load camera calibration parameters
         self.camera_mat, self.dist_coeffs = file_utils.load_yaml(os.path.abspath(CALIBRATION_FILE))
@@ -88,6 +89,9 @@ class MarkerTracker(VideoStreamer):
 
     def get_marker_length(self):
         return self.marker_length
+
+    def get_marker_type(self):
+        return self.marker_type
 
     def get_pose(self):
         return self.pose
@@ -159,7 +163,7 @@ class ColorMarkerTracker(MarkerTracker):
                  resolution=480,
                  framerate=30,
                  fps_vid=15,
-                 marker_length=0.24,
+                 marker_length=2.44,
                  freq=DEFAULT_FREQ,
                  debug=0,
                  video_dir=None,
@@ -193,6 +197,7 @@ class ColorMarkerTracker(MarkerTracker):
         self.opening_frame = None
         self.processed_frame = None # Final thresholded frame
         self.depth = -1
+        self.marker_type = "yellow"
 
     # This method tracks the color yellow. First, the image is undistorted to account for any lens distortion. Next,
     # it is converted from BGR to LAB color space. The LAB color space is great for color detection since it separates
@@ -236,7 +241,7 @@ class ColorMarkerTracker(MarkerTracker):
                                                              cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
-        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 127, 255,
+        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 150, 255,
                                                           cv2.THRESH_BINARY)
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
@@ -459,6 +464,7 @@ class ArucoTracker(MarkerTracker):
         # Create aruco dictionary
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
         self.aruco_param = aruco.DetectorParameters_create()  # Default parameters
+        self.marker_type = "aruco"
 
         self.rvec = None
 
