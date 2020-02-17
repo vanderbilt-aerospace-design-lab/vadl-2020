@@ -122,8 +122,9 @@ class MarkerTracker(VideoStreamer):
         try:
             time.sleep(self.period - (time.time() - self.cur_frame_time))
         except IOError:
-            if self.debug > 2:
-                print("WARNING: Desired frequency is too fast")
+            pass
+            #if self.debug > 2:
+             #   print("WARNING: Desired frequency is too fast")
 
     def stop(self):
         self.vs.stop()
