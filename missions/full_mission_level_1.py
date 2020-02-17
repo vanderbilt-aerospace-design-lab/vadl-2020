@@ -9,6 +9,7 @@
 
 from utils.dronekit_utils import *
 from utils.controller_utils import *
+import time
 
 if __name__ == "__main__":
 
@@ -17,7 +18,9 @@ if __name__ == "__main__":
 
     # Connect to RC controller
     rc_controller = Controller(vehicle)
-    rc_controller.print_channels()
+    for i in range(200):
+    	rc_controller.print_controller_states()
+	time.sleep(0.1)
 
     vehicle.close()
     # Establish connection with Feather M0 for winch and tool control
