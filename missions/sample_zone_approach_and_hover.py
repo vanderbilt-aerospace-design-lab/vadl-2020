@@ -15,9 +15,9 @@ from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
 from marker_detection.camera import Realsense
 from marker_detection import marker_hover
 
-TAKEOFF_ALTITUDE = 1 # Meters
-SEARCH_ALTITUDE = 10 # Meters
-HOVER_ALTITUDE = 4 * 0.3048 # Meters
+TAKEOFF_ALTITUDE = 0.5 # Meters
+SEARCH_ALTITUDE = 1.0 # Meters
+HOVER_ALTITUDE = 2 * 0.3048 # Meters
 DEFAULT_FREQ = 1 # Hz
 
 VEHICLE_POSE_DIR = "marker_detection/pose_data"
@@ -81,6 +81,8 @@ def main():
 
     # Begin realsense localization in the background
     realsense_localization.start(vehicle, rs=rs, scheduler=sched)
+
+    time.sleep(10)
 
     # Arm the UAV
     dronekit_utils.arm_realsense_mode(vehicle)

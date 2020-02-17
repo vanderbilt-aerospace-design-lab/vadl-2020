@@ -102,10 +102,11 @@ def marker_approach(vehicle, pose_avg):
 def alt_hover(vehicle, pose_avg, hover_alt):
 
     # Send position command to the vehicle
+    #print(pose_avg[2])
     dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                         forward=pose_avg[0],
                                                         right=pose_avg[1],
-                                                        down=-hover_alt + pose_avg[2])
+                                                        down=pose_avg[2])
 
 # Detect a marker and hover above it. The vehicle will remain still until a marker is detected. Then it will approach
 # the marker at the current altitude until it is directly above the marker. Finally, the vehicle will ascend/descend
@@ -115,6 +116,7 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
 
     if hover_alt is None:
         hover_alt = vehicle.location.global_relative_frame.alt
+    PID_Z.setpoint = -hover_alt
 
     # Hover until manual override
     pose_queue = np.zeros((RUNNING_AVG_LENGTH, 3), dtype=float)
@@ -148,15 +150,18 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
                                       PID_Y(-marker_pose_body_ref[1]),
                                       PID_Z(-marker_pose_body_ref[2])]])
 
+            pose_avg = control_pose[0]
+            #print(pose_avg)
+
             # Keep a queue of recent marker poses for a runninng average
-            pose_queue[count % len(pose_queue)] = control_pose
-            count += 1
+            #pose_queue[count % len(pose_queue)] = control_pose
+            #count += 1
 
             # Take the average
-            if count < RUNNING_AVG_LENGTH - 1:
-                pose_avg = np.sum(pose_queue, axis=0) / count
-            else:
-                pose_avg = np.average(pose_queue, axis=0)
+            #if count < RUNNING_AVG_LENGTH - 1:
+            #    pose_avg = np.sum(pose_queue, axis=0) / count
+            #else:
+            #    pose_avg = np.average(pose_queue, axis=0)
 
             # Approach the marker at the current altitude until directly above the marker; then navigate to the
             # desired hover altitude.
