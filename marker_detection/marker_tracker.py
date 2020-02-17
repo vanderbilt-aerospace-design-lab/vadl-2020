@@ -164,7 +164,7 @@ class ColorMarkerTracker(MarkerTracker):
                  resolution=480,
                  framerate=30,
                  fps_vid=15,
-                 marker_length=0.24,
+                 marker_length=2.44,
                  freq=DEFAULT_FREQ,
                  debug=0,
                  video_dir=None,
@@ -187,7 +187,7 @@ class ColorMarkerTracker(MarkerTracker):
         # in the LAB color space. Above the threshold, binary thresholding is performed. This was determined to be the
         # best approach for detecting the yellow marker in a large altitude range. The altitude threshold should be
         # empirically determined.
-        self.alt_thresh = 25
+        self.alt_thresh = 15
 
         # Stores each image processing step
         self.undistort_frame = None
