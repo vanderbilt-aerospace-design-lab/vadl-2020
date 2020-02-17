@@ -5,7 +5,7 @@ import time
 def main():
 
     # Connect to vehicle
-    vehicle = dronekit_utils.connect_vehicle()
+    vehicle = dronekit_utils.connect_vehicle(connection_string=None)
     realsense_localization.start(vehicle)
 
     while True:

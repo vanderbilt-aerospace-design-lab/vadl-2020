@@ -18,7 +18,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import dronekit_utils, file_utils
 from marker_detection.camera import Realsense
 
-DATA_DIR = "./slam_evaluation/data"
+# 0 is sideways 45 degrees
+# 1 is forward facing
+# 2 is downward facing
+# 3 is sideways downward, usb towards the front
+REALSENSE_ORIENTATION = 3
+
+DATA_DIR = "slam/data"
 RS_FILE_BASE = "rs_pose"
 ACCEL_FILE_BASE = "rs_accel"
 RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
@@ -60,7 +66,7 @@ debug_enable = 0
 # pose data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
 pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
 
-''' Realsense to NED pose transform
+''' Realsense to NED pose transform, upside down and rotated 45 degrees
 0: NED Origin
 1: RS Origin
 2: NED Frame
@@ -77,29 +83,67 @@ H3_2 = H3_A.dot(HA_B).dot(HB_2)
 Broken up into a 180 deg. flip about z (A), 45 deg rotation about x (B) and 
 left hand to right hand coord. system change.
 '''
+if REALSENSE_ORIENTATION == 0:
 
-H0_1 = np.array([[1, 0, 0, 0],
-                 [0, 0, 1, 0],
-                 [0, -1, 0, 0],
-                 [0, 0, 0, 1]])
+    # Upside down, rotated 45 degrees, sideways mount
+    H0_1 = np.array([[1, 0, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
 
-HA_3 = np.array([[-1, 0, 0, 0],
-                 [0, -1, 0, 0],
-                 [0, 0, 1, 0],
-                 [0, 0, 0, 1]])
-H3_A = tf.inverse_matrix(HA_3)
+    HA_3 = np.array([[-1, 0, 0, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]])
+    H3_A = tf.inverse_matrix(HA_3)
 
-HA_B = np.array([[1, 0, 0, 0],
-                 [0, np.cos(40*np.pi / 180), -np.sin(40*np.pi / 180), 0],
-                 [0, np.sin(40*np.pi / 180), np.cos(40*np.pi / 180), 0],
-                 [0, 0, 0, 1]])
+    HA_B = np.array([[1, 0, 0, 0],
+                     [0, np.cos(40*np.pi / 180), -np.sin(40*np.pi / 180), 0],
+                     [0, np.sin(40*np.pi / 180), np.cos(40*np.pi / 180), 0],
+                     [0, 0, 0, 1]])
 
-HB_2 = np.array([[1, 0, 0, 0],
-                 [0, 0, -1, 0],
-                 [0, 1, 0, 0],
-                 [0, 0, 0, 1]])
+    HB_2 = np.array([[1, 0, 0, 0],
+                     [0, 0, -1, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 0, 1]])
 
-H3_2 = H3_A.dot(HA_B).dot(HB_2)
+    H3_2 = H3_A.dot(HA_B).dot(HB_2)
+elif REALSENSE_ORIENTATION == 1:
+
+    # Forward, USB port to the right
+    H0_1 = np.array([[0, 0, -1, 0],
+                     [1, 0, 0, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
+    H3_2 = np.linalg.inv(H0_1)
+elif REALSENSE_ORIENTATION == 2:
+
+    # Downfacing, USB port to the right
+    H0_1 = np.array([[0, 0, 1, 0],
+                     [-1, 0, 0, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
+
+    H3_2 = np.array([[0, -1, 0, 0],
+                     [-1, 0, 0, 0],
+                     [0, 0, -1, 0],
+                     [0, 0, 0, 1]])
+else:
+
+    # Sideways, downward, USB portforward
+    H0_1 = np.array([[1, 0, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, 0, 1]])
+    H3_2 = np.array([[1, 0, 0, 0],
+                     [0, -1, 0, 0],
+                     [0, 0, -1, 0],
+                     [0, 0, 0, 1]])
+
+
+def rs_to_body(H1_3):
+    return (H0_1.dot(H1_3)).dot(H3_2)
+
 
 vehicle = None
 H0_2 = None
@@ -201,7 +245,7 @@ def localize(rs, sched=None):
     if sched is None:
         sched = BackgroundScheduler()
 
-    sched.add_job(send_vision_position_message, 'interval', seconds=1 / vision_msg_hz)
+    sched.add_job(send_vision_position_message, 'interval', seconds=1 / vision_msg_hz, max_instances=5)
     sched.add_job(send_confidence_level_dummy_message, 'interval', seconds=1 / confidence_msg_hz)
 
     # For scale calibration, we will use a thread to monitor user input
@@ -237,7 +281,7 @@ def localize(rs, sched=None):
                 H1_3[2][3] = data.translation.z * scale_factor
 
                 # Transform to aeronautic coordinates (body AND reference frame!)
-                H0_2 = (H0_1.dot(H1_3)).dot(H3_2)
+                H0_2 = rs_to_body(H1_3)
 
                 # Take offsets from body's center of gravity (or IMU) to camera's origin into account
                 if body_offset_enabled == 1:
@@ -288,10 +332,13 @@ def localize(rs, sched=None):
         print("Realsense pipeline and vehicle object closed.")
         sys.exit()
 
-def start(vehicle_object, scheduler=None):
+def start(vehicle_object, rs=None, scheduler=None):
     global vehicle
     vehicle = vehicle_object
-    rs = Realsense()
+
+    # Create realsense object
+    if rs is None:
+        rs = Realsense()
 
     # Spawn a thread to transform realsense pose to UAV pose and send vision_position_estimate messages to
     # Mavlink in the background

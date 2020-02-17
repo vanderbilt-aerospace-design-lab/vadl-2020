@@ -9,8 +9,8 @@ os.environ["MAVLINK20"] = "1"
 # Import the libraries
 import pyrealsense2 as rs
 
-RS_POSE_FILE = "./slam_evaluation/data/pose"
-RS_ACCEL_FILE = "./slam_evaluation/data/rs_accel"
+RS_POSE_FILE = "./slam/data/pose"
+RS_ACCEL_FILE = "./slam/data/rs_accel"
 
 
 def realsense_connect():
@@ -29,22 +29,6 @@ def realsense_connect():
     pipe.start(cfg)
 
     return pipe
-
-def rs_to_body(data):
-
-    # Forward facing
-    H_T265body_aeroBody = np.array([[-1, 0, 0, 0],
-                                    [0, 0, -1, 0],
-                                    [0, -1, 0, 0],
-                                    [0, 0, 0, 1]])
-
-    # Original
-    pose = np.array([data.translation.x, data.translation.y, data.translation.z, 1])
-
-    # Forward facing / 45 degrees
-    pose = np.matmul(pose, H_T265body_aeroBody)
-
-    return pose
 
 def test_rs(pipe):
     pose_file = open(RS_POSE_FILE + ".txt", "w")

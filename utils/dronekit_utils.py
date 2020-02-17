@@ -20,7 +20,9 @@ def connect_vehicle(connection_string=CONNECTION_STRING):
 
 def connect_vehicle_args(args=None):
     # Start SITL if connection string specified
-    if args["sitl"]:
+    if args is None:
+        connection_string = CONNECTION_STRING
+    elif args["sitl"]:
         import dronekit_sitl
         sitl = dronekit_sitl.start_default()
         connection_string = sitl.connection_string()
@@ -47,10 +49,18 @@ def arm(vehicle):
     vehicle.armed = True
 
 def arm_realsense_mode(vehicle):
+
+    # Wait for home location to be set
+    while vehicle.home_location is None:
+        print("Waiting for EKF Origin to be set")
+        time.sleep(1)
+
     print("Arming motors")
     # Copter should arm in GUIDED mode
-    #vehicle.mode = VehicleMode("GUIDED")
+    vehicle.mode = VehicleMode("GUIDED")
     vehicle.armed = True
+
+    time.sleep(5) # So the UAV does not takeoff immediately after
 
 def arm_no_failsafe(vehicle):
     print("Arming motors")
@@ -64,7 +74,7 @@ def reboot(vehicle):
     print("Rebooting FCU")
     vehicle.reboot()
 
-def reboot_and_connect(vehicle, args):
+def reboot_and_connect(vehicle, args=None):
     # Reboot
     reboot(vehicle)
     time.sleep(1)
@@ -92,7 +102,7 @@ def takeoff(vehicle, aTargetAltitude):
         print(" Altitude: ", vehicle.location.global_relative_frame.alt)
 
         # Break and return from function just below target altitude.
-        if vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:
+        if vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.90:
             print("Reached target altitude")
             break
         time.sleep(1)
@@ -122,6 +132,17 @@ def wait_for_home_location(vehicle):
         cmds.wait_ready()
         print("Waiting for home location")
         time.sleep(0.5)
+
+def is_guided(vehicle):
+    return vehicle.mode == VehicleMode("GUIDED")
+
+# Move the vehicle up or down
+def move_relative_alt(vehicle, rel_alt=None):
+    if rel_alt is not None:
+        goto_position_target_body_offset_ned(vehicle,
+                                             forward=0,
+                                             right=0,
+                                             down=-rel_alt + vehicle.location.global_relative_frame.alt)
 
 def goto_position_target_local_offset_ned(vehicle, north, east, down):
     """
