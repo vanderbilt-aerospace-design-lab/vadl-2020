@@ -22,6 +22,20 @@ MAX_SEARCH_TIME = 5 # Seconds
 DETECTION_TIME = 3 # Seconds
 RUNNING_AVG_LENGTH = 10
 
+# Distance to the camera relative to the UAV body center
+BODY_TRANSLATION_X = 0.102
+BODY_TRANSLATION_Y = 0.0058
+BODY_TRANSLATION_Z = 0.0242
+
+BODY_TRANSFORM_ARUCO = np.array([[0, -1, 0, BODY_TRANSLATION_X],
+                                   [1, 0, 0, BODY_TRANSLATION_Y],
+                                   [0, 0, 1, BODY_TRANSLATION_Z],
+                                   [0, 0, 0, 1]])
+BODY_TRANSFORM_YELLOW = np.array([[0, -1, 0, BODY_TRANSLATION_X],
+                                   [-1, 0, 0, BODY_TRANSLATION_Y],
+                                   [0, 0, 1, BODY_TRANSLATION_Z],
+                                   [0, 0, 0, 1]])
+
 PID_X = PID(0.35, 0, 0.005, setpoint=0)
 PID_Y = PID(0.35, 0, 0.005, setpoint=0)
 PID_Z = PID(0.35, 0, 0.005, setpoint=0) # Setpoint will be set later
@@ -40,19 +54,13 @@ def marker_ref_to_body_ref(marker_pose, marker_tracker):
 
     if marker_tracker.get_marker_type == "aruco":
         # Aruco marker
-        body_transform = np.array([[0, -1, 0, 0],
-                                   [1, 0, 0, 0],
-                                   [0, 0, 1, 0],
-                                   [0, 0, 0, 1]])
+        body_transform = BODY_TRANSFORM_ARUCO
     else:
         # Yellow marker
-        body_transform = np.array([[0, -1, 0, 0],
-                                   [-1, 0, 0, 0],
-                                   [0, 0, 1, 0],
-                                   [0, 0, 0, 1]])
+        body_transform = BODY_TRANSFORM_YELLOW
 
-    # Transform to body pose
-    body_pose = np.matmul(np.append(marker_pose, 1), body_transform)
+    # Transform to body pose; flip axes and translation offset
+    body_pose = np.matmul(body_transform, np.append(marker_pose, 1))
 
     return body_pose[:-1]
 
