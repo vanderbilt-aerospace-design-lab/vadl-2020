@@ -11,7 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 # Custom packages
 from utils import dronekit_utils, file_utils
 from slam import realsense_localization
-from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
+from marker_detection.marker_tracker import ArucoTracker, YellowMarkerTracker
 from marker_detection.camera import Realsense
 from marker_detection import marker_hover
 
@@ -62,7 +62,7 @@ else:
 
 def main():
 
-    marker_tracker = ColorMarkerTracker(src=args["video"],
+    marker_tracker = YellowMarkerTracker(src=args["video"],
                                         use_pi=args["pi"],
                                         resolution=args["resolution"],
                                         framerate=args["fps"],

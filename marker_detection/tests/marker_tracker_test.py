@@ -1,6 +1,6 @@
 import os
 import argparse
-from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
+from marker_detection.marker_tracker import ArucoTracker, YellowMarkerTracker
 
 DEFAULT_MARKER = "yellow"
 
@@ -47,7 +47,7 @@ else:
 def main():
     print("Initializing")
     if args["marker"] == "yellow":
-       tracker = ColorMarkerTracker(src=args["video"],
+       tracker = YellowMarkerTracker(src=args["video"],
                                            use_pi=args["picamera"],
                                            resolution=args["resolution"],
                                            framerate=args["fps"],
@@ -67,7 +67,7 @@ def main():
 
     print("Tracking")
     while True:
-        tracker.track_marker(alt=0)
+        tracker.track_marker(alt=30)
         if tracker.is_marker_found():
             print(tracker.get_pose())
 
