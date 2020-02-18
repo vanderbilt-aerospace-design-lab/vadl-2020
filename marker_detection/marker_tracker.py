@@ -199,7 +199,8 @@ class ColorMarkerTracker(MarkerTracker):
         # in the LAB color space. Above the threshold, binary thresholding is performed. This was determined to be the
         # best approach for detecting the yellow marker in a large altitude range. The altitude threshold should be
         # empirically determined.
-        self.alt_thresh = 15
+
+        self.alt_thresh = 0
 
         # Stores each image processing step
         self.undistort_frame = None
@@ -213,26 +214,26 @@ class ColorMarkerTracker(MarkerTracker):
         self.marker_type = None
 
 
-    # TODO: Calculate pixel width using potentially hypotenuse stuff:
-    def calculate_scale_factor(self, peri, pixel_width):
-        # Find the distance to the platform
-        pixel_length = 0.5 * (peri - 2 * pixel_width)
-        self.depth = (self.focal_length / pixel_length) * self.marker_length
-
-        # Determine the scale factor
-        self.scale_factor = self.marker_length / pixel_length
-
-    # Checks if the contour approximation is within the desired rectangle aspect ratio.
-    def check_aspect_ratio(self, approx, ar_min=0.6, ar_max=1.5):
-        if len(approx) == 4:
-            # compute the bounding box of the contour and use the
-            # bounding box to compute the aspect ratio
-            (x, y, w, h) = cv2.boundingRect(approx)
-            ar = w / float(h)
-
-            # a rectangle will have an aspect ratio that is within this range
-            return True if ar_min <= ar <= ar_max else False
-        return False
+    # # TODO: Calculate pixel width using potentially hypotenuse stuff:
+    # def calculate_scale_factor(self, peri, pixel_width):
+    #     # Find the distance to the platform
+    #     pixel_length = 0.5 * (peri - 2 * pixel_width)
+    #     self.depth = (self.focal_length / pixel_length) * self.marker_length
+    #
+    #     # Determine the scale factor
+    #     self.scale_factor = self.marker_length / pixel_length
+    #
+    # # Checks if the contour approximation is within the desired rectangle aspect ratio.
+    # def check_aspect_ratio(self, approx, ar_min=0.6, ar_max=1.5):
+    #     if len(approx) == 4:
+    #         # compute the bounding box of the contour and use the
+    #         # bounding box to compute the aspect ratio
+    #         (x, y, w, h) = cv2.boundingRect(approx)
+    #         ar = w / float(h)
+    #
+    #         # a rectangle will have an aspect ratio that is within this range
+    #         return True if ar_min <= ar <= ar_max else False
+    #     return False
 
 
 # Tracks a yellow marker.
@@ -302,7 +303,7 @@ class YellowMarkerTracker(ColorMarkerTracker):
         # Dynamic thresholding works terribly in brightness; maybe just get rid of it?
         # 127 yellow thresh lets in a lot but it's ok because binary light thresh filters it all out
         # Q: Does binary thresh work well in non-bright conditions?
-        if alt < self.alt_thresh:
+        if np.abs(alt) < self.alt_thresh:
             # Dynamically threshold lightness
             retval2, self.thresh_light_frame = cv2.threshold(self.lab_space_frame[:, :, 0], 200, 255,
                                                              cv2.THRESH_BINARY | cv2.THRESH_OTSU)
@@ -504,171 +505,170 @@ class YellowMarkerTracker(ColorMarkerTracker):
             return True if 0.6 <= ar <= 1.5 else False
         return False
 
-class RedMarkerTracker(ColorMarkerTracker):
-    def __init__(self,
-                 src=0,
-                 use_pi=-1,
-                 resolution=480,
-                 framerate=30,
-                 fps_vid=15,
-                 marker_width=DEFAULT_RED_MARKER_WIDTH,
-                 marker_length=DEFAULT_RED_MARKER_LENGTH,
-                 aspect_ratio_min=DEFAULT_RED_AR_MIN,
-                 aspect_ratio_max=DEFAULT_RED_AR_MAX,
-                 freq=DEFAULT_FREQ,
-                 debug=0,
-                 video_dir=None,
-                 video_file=None,
-                 pose_file=POSE_FILE):
-
-        super(RedMarkerTracker, self).__init__(src=src,
-                                                 use_pi=use_pi,
-                                                 resolution=resolution,
-                                                 framerate=framerate,
-                                                 fps_vid=fps_vid,
-                                                 marker_length=marker_length,
-                                                 freq=freq,
-                                                 debug=debug,
-                                                 video_dir=video_dir,
-                                                 video_file=video_file,
-                                                 pose_file=pose_file)
-
-        self.hsv_frame = None
-        self.aspect_ratio_min = aspect_ratio_min,
-        self.aspect_ratio_max = aspect_ratio_max
-        self.marker_type = "red"
-
-    # This method tracks the color yellow. First, the image is undistorted to account for any lens distortion. Next,
-    # it is converted from BGR to LAB color space. The LAB color space is great for color detection since it separates
-    # the image into lightness (L), green -> red (*a), and blue -> yellow (*b). Various thresholds (explained within)
-    # are applied to identify the yellow, and the thresholds are further refined to eliminate noise.
-    #
-    # After color detection, we search for a rectangle shape using contour approximation. This rules out all noise
-    # left over. The pose is calculated and scaled using the known marker length.
-    def track_marker(self, alt=25):
-        self.cur_frame_time = time.time()
-        self.cur_frame = self.read()
-        self.true_alt = alt
-
-        # Convert to HSV
-        self.hsv_frame = cv2.cvtColor(self.cur_frame, cv2.COLOR_BGR2HSV)
-
-        # Range for lower red
-        self.lower_red_frame = cv2.inRange(self.hsv_frame, (0, 120, 70), (10, 255, 255))
-        # cv2.imshow("mask1", mask1)
-        # cv2.waitKey(0)
-
-        # Range for upper range
-        self.upper_red_frame = cv2.inRange(self.hsv_frame, (170, 120, 70), (180, 255, 255))
-        # cv2.imshow("mask2", mask2)
-        # cv2.waitKey(0)
-
-        # Convert to LAB color space
-        # LAB color space is used to separate lightness from color attributes
-        # L is dark (0) to light (255)
-        # A is Green (0) to Red (255)
-        # B is Blue (0) to Yellow (255)
-        self.lab_space_frame = cv2.cvtColor(self.cur_frame, cv2.COLOR_BGR2Lab)
-
-        # TODO: Determine if this actually helps in the field
-        # Lightness is thresholded since the yellow tarp will most likely be the lightest object in the image.
-        # At lower altitudes, the marker takes up the majority of the image, and OTSU normalization is ideal, since
-        # it dynamically chooses the threshold value to segment between "light" and "not light". At higher altitudes,
-        # the marker is too small for OTSU to threshold well, so a binary threshold is used.
-        retval2, self.thresh_light_frame = cv2.threshold(self.lab_space_frame[:, :, 0], 80, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        # cv2.imshow("mask3", mask3)
-        # cv2.waitKey(0)
-
-        # Generating the final mask to detect red color
-        self.thresh_sum_frame = cv2.bitwise_and(self.lower_red_frame + self.upper_red_frame, self.thresh_light_frame)
-
-        # cv2.imshow("final_mask", final_mask)
-        # cv2.waitKey(0)
-
-        # Blur the image to reduce noise
-        self.thresh_sum_frame = cv2.GaussianBlur(self.thresh_sum_frame, (5, 5), 0)
-
-        # Create kernels for dilution and erosion operations; larger ksize means larger pixel neighborhood where the
-        # operation is taking place
-        se1 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(4, 4))
-        se2 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(4, 4))
-
-        # Perform "opening_frame." This is erosion followed by dilation, which reduces noise. The ksize is pretty small,
-        # otherwise the white in the marker is eliminated
-        self.opening_frame = cv2.morphologyEx(self.thresh_sum_frame, cv2.MORPH_OPEN, se1)
-
-        # Perform "closing." This is dilution followed by erosion, which fills in black gaps within the marker. This is
-        # necessary if the lightness threshold is not able to get the entire marker at lower altitudes
-        self.processed_frame = cv2.morphologyEx(self.opening_frame, cv2.MORPH_CLOSE, se2)
-
-        # cv2.imshow("red thresh", processed_frame)
-        # cv2.waitKey(0)
-
-        # Find contours
-        # TODO: The return values here are dependent on Opencv 2,3,or 4, so either be sure of which version
-        #  we are using or add some code to check the version
-        _, contours, hierarchy = cv2.findContours(self.processed_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-
-        # Find corners of the contour
-        if len(contours) >= 1:
-
-            # Take contour w/ max area; the marker will always be the largest contour in the image
-            c = max(contours, key=cv2.contourArea)
-
-            # Approximate the contour
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.03 * peri, True)
-
-            # Keep going if the contour is the marker
-            if is_rectangle(approx):
-                c = approx
-
-                # Find extreme points
-                extLeft = tuple(c[c[:, :, 0].argmin()][0])
-                extRight = tuple(c[c[:, :, 0].argmax()][0])
-                extTop = tuple(c[c[:, :, 1].argmin()][0])
-                extBot = tuple(c[c[:, :, 1].argmax()][0])
-
-                # Find the contour center
-                M = cv2.moments(c)
-                cX = int(M["m10"] / M["m00"])
-                cY = int(M["m01"] / M["m00"])
-
-                # Find positional error from center of platform; Pixels
-                err_x = cX - (640 / 2)
-                err_y = (480 / 2) - cY
-
-                # Calculate the scale factor using the pixel marker length
-                scale_factor = calculate_scale_factor(approx)
-
-                # Convert to meters
-                err_x *= scale_factor
-                err_y *= scale_factor
-                pose = (err_x, err_y)
-
-                detected = visualize_marker_pose(frame, extLeft, extRight, extTop, extBot, cX, cY, c, pose)
-                cv2.imshow("detected", detected)
-                cv2.waitKey(0)
-
-        #         # Debug
-        #         self.marker_found = True
-        #         if self.get_debug():
-        #             self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
-        #                                                        cX, cY, self.depth, c)
-        #             self.visualize()
-        #             self.save_pose()
-        #
-        #         return True
-        #
-        # # Debug
-        # self.pose = None
-        # self.marker_found = False
-        # if self.get_debug():
-        #     self.visualize()
-        #     self.save_pose()
-        #
-        # return False
-
+# class RedMarkerTracker(ColorMarkerTracker):
+#     def __init__(self,
+#                  src=0,
+#                  use_pi=-1,
+#                  resolution=480,
+#                  framerate=30,
+#                  fps_vid=15,
+#                  marker_width=DEFAULT_RED_MARKER_WIDTH,
+#                  marker_length=DEFAULT_RED_MARKER_LENGTH,
+#                  aspect_ratio_min=DEFAULT_RED_AR_MIN,
+#                  aspect_ratio_max=DEFAULT_RED_AR_MAX,
+#                  freq=DEFAULT_FREQ,
+#                  debug=0,
+#                  video_dir=None,
+#                  video_file=None,
+#                  pose_file=POSE_FILE):
+#
+#         super(RedMarkerTracker, self).__init__(src=src,
+#                                                  use_pi=use_pi,
+#                                                  resolution=resolution,
+#                                                  framerate=framerate,
+#                                                  fps_vid=fps_vid,
+#                                                  marker_length=marker_length,
+#                                                  freq=freq,
+#                                                  debug=debug,
+#                                                  video_dir=video_dir,
+#                                                  video_file=video_file,
+#                                                  pose_file=pose_file)
+#
+#         self.hsv_frame = None
+#         self.aspect_ratio_min = aspect_ratio_min,
+#         self.aspect_ratio_max = aspect_ratio_max
+#         self.marker_type = "red"
+#
+#     # This method tracks the color yellow. First, the image is undistorted to account for any lens distortion. Next,
+#     # it is converted from BGR to LAB color space. The LAB color space is great for color detection since it separates
+#     # the image into lightness (L), green -> red (*a), and blue -> yellow (*b). Various thresholds (explained within)
+#     # are applied to identify the yellow, and the thresholds are further refined to eliminate noise.
+#     #
+#     # After color detection, we search for a rectangle shape using contour approximation. This rules out all noise
+#     # left over. The pose is calculated and scaled using the known marker length.
+#     def track_marker(self, alt=25):
+#         self.cur_frame_time = time.time()
+#         self.cur_frame = self.read()
+#         self.true_alt = alt
+#
+#         # Convert to HSV
+#         self.hsv_frame = cv2.cvtColor(self.cur_frame, cv2.COLOR_BGR2HSV)
+#
+#         # Range for lower red
+#         self.lower_red_frame = cv2.inRange(self.hsv_frame, (0, 120, 70), (10, 255, 255))
+#         # cv2.imshow("mask1", mask1)
+#         # cv2.waitKey(0)
+#
+#         # Range for upper range
+#         self.upper_red_frame = cv2.inRange(self.hsv_frame, (170, 120, 70), (180, 255, 255))
+#         # cv2.imshow("mask2", mask2)
+#         # cv2.waitKey(0)
+#
+#         # Convert to LAB color space
+#         # LAB color space is used to separate lightness from color attributes
+#         # L is dark (0) to light (255)
+#         # A is Green (0) to Red (255)
+#         # B is Blue (0) to Yellow (255)
+#         self.lab_space_frame = cv2.cvtColor(self.cur_frame, cv2.COLOR_BGR2Lab)
+#
+#         # TODO: Determine if this actually helps in the field
+#         # Lightness is thresholded since the yellow tarp will most likely be the lightest object in the image.
+#         # At lower altitudes, the marker takes up the majority of the image, and OTSU normalization is ideal, since
+#         # it dynamically chooses the threshold value to segment between "light" and "not light". At higher altitudes,
+#         # the marker is too small for OTSU to threshold well, so a binary threshold is used.
+#         retval2, self.thresh_light_frame = cv2.threshold(self.lab_space_frame[:, :, 0], 80, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+#         # cv2.imshow("mask3", mask3)
+#         # cv2.waitKey(0)
+#
+#         # Generating the final mask to detect red color
+#         self.thresh_sum_frame = cv2.bitwise_and(self.lower_red_frame + self.upper_red_frame, self.thresh_light_frame)
+#
+#         # cv2.imshow("final_mask", final_mask)
+#         # cv2.waitKey(0)
+#
+#         # Blur the image to reduce noise
+#         self.thresh_sum_frame = cv2.GaussianBlur(self.thresh_sum_frame, (5, 5), 0)
+#
+#         # Create kernels for dilution and erosion operations; larger ksize means larger pixel neighborhood where the
+#         # operation is taking place
+#         se1 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(4, 4))
+#         se2 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(4, 4))
+#
+#         # Perform "opening_frame." This is erosion followed by dilation, which reduces noise. The ksize is pretty small,
+#         # otherwise the white in the marker is eliminated
+#         self.opening_frame = cv2.morphologyEx(self.thresh_sum_frame, cv2.MORPH_OPEN, se1)
+#
+#         # Perform "closing." This is dilution followed by erosion, which fills in black gaps within the marker. This is
+#         # necessary if the lightness threshold is not able to get the entire marker at lower altitudes
+#         self.processed_frame = cv2.morphologyEx(self.opening_frame, cv2.MORPH_CLOSE, se2)
+#
+#         # cv2.imshow("red thresh", processed_frame)
+#         # cv2.waitKey(0)
+#
+#         # Find contours
+#         # TODO: The return values here are dependent on Opencv 2,3,or 4, so either be sure of which version
+#         #  we are using or add some code to check the version
+#         _, contours, hierarchy = cv2.findContours(self.processed_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+#
+#         # Find corners of the contour
+#         if len(contours) >= 1:
+#
+#             # Take contour w/ max area; the marker will always be the largest contour in the image
+#             c = max(contours, key=cv2.contourArea)
+#
+#             # Approximate the contour
+#             peri = cv2.arcLength(c, True)
+#             approx = cv2.approxPolyDP(c, 0.03 * peri, True)
+#
+#             # Keep going if the contour is the marker
+#             if is_rectangle(approx):
+#                 c = approx
+#
+#                 # Find extreme points
+#                 extLeft = tuple(c[c[:, :, 0].argmin()][0])
+#                 extRight = tuple(c[c[:, :, 0].argmax()][0])
+#                 extTop = tuple(c[c[:, :, 1].argmin()][0])
+#                 extBot = tuple(c[c[:, :, 1].argmax()][0])
+#
+#                 # Find the contour center
+#                 M = cv2.moments(c)
+#                 cX = int(M["m10"] / M["m00"])
+#                 cY = int(M["m01"] / M["m00"])
+#
+#                 # Find positional error from center of platform; Pixels
+#                 err_x = cX - (640 / 2)
+#                 err_y = (480 / 2) - cY
+#
+#                 # Calculate the scale factor using the pixel marker length
+#                 scale_factor = calculate_scale_factor(approx)
+#
+#                 # Convert to meters
+#                 err_x *= scale_factor
+#                 err_y *= scale_factor
+#                 pose = (err_x, err_y)
+#
+#                 detected = visualize_marker_pose(frame, extLeft, extRight, extTop, extBot, cX, cY, c, pose)
+#                 cv2.imshow("detected", detected)
+#                 cv2.waitKey(0)
+#
+#         #         # Debug
+#         #         self.marker_found = True
+#         #         if self.get_debug():
+#         #             self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
+#         #                                                        cX, cY, self.depth, c)
+#         #             self.visualize()
+#         #             self.save_pose()
+#         #
+#         #         return True
+#         #
+#         # # Debug
+#         # self.pose = None
+#         # self.marker_found = False
+#         # if self.get_debug():
+#         #     self.visualize()
+#         #     self.save_pose()
+#         #
+#         # return False
 
 
 # Tracks an Aruco marker. Marker length is expected in meters

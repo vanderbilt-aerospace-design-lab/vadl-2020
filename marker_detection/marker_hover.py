@@ -18,14 +18,16 @@ from simple_pid import PID
 from slam import realsense_localization
 
 HOVER_THRESHOLD = 0.1 # Meters
-MAX_SEARCH_TIME = 5 # Seconds
+MAX_SEARCH_TIME = 20 # Seconds
 DETECTION_TIME = 3 # Seconds
 RUNNING_AVG_LENGTH = 10
 
-# Distance to the camera relative to the UAV body center
+# Distance to the camera relative to the UAV in meters
+# UAV coord. system is considered to be the x and y centers, and z is equal with the 
+# bottom of the legs
 BODY_TRANSLATION_X = 0.102
-BODY_TRANSLATION_Y = 0.0058
-BODY_TRANSLATION_Z = 0.0242
+BODY_TRANSLATION_Y = -0.0058
+BODY_TRANSLATION_Z = -0.0075
 
 BODY_TRANSFORM_ARUCO = np.array([[0, -1, 0, BODY_TRANSLATION_X],
                                    [1, 0, 0, BODY_TRANSLATION_Y],
@@ -173,7 +175,9 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
             marker_pose = marker_tracker.get_pose()
 
             # Transform the marker pose into UAV body frame (NED)
+
             marker_pose_body_ref = marker_ref_to_body_ref(marker_pose, marker_tracker, vehicle)
+            print(marker_pose_body_ref)
 
             # PID control; input is the UAV pose relative to the marker (hence the negatives)
             control_pose = np.array([[PID_X(-marker_pose_body_ref[0]),
