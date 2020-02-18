@@ -15,7 +15,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import dronekit_utils, file_utils
 from simple_pid import PID
 from slam import realsense_localization
-from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
+from marker_detection.marker_tracker import ArucoTracker, YellowMarkerTracker
 from marker_detection.camera import Realsense
 
 TARGET_ALTITUDE = 1 # Meters
@@ -178,7 +178,7 @@ def main():
                                       video_file=args["name"],
                                       pose_file=args["pose_file"])
     else:
-        marker_tracker = ColorMarkerTracker(src=args["video"],
+        marker_tracker = YellowMarkerTracker(src=args["video"],
                                             use_pi=args["pi"],
                                             resolution=args["resolution"],
                                             framerate=args["fps"],
