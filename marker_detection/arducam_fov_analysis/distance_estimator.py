@@ -1,0 +1,36 @@
+
+# --------------------------------------------------------------------------------- #
+#
+# This script is for testing distance estimation using arducam based on the
+# analysis done in arducam_fov_analysis.py. Assuming the camera is at a 90 degree
+# angle to a flat surface, the distance along the ground to any pixel in the image
+# can be easily calcutated. This script displays an image and outputs the estimated
+# distance to any pixel in the image after a mouse click on the image
+#
+# --------------------------------------------------------------------------------- #
+
+from math import sqrt, tan, radians
+import cv2
+from matplotlib import pyplot as plt
+
+ARDUCAM_SLOPE = 0.3222               # Pixel vs. angle (degrees) slope for Arducam with 480x640 resolution
+HEIGHT = 2 + (13/16)                 # Height of camera off the ground
+IMG_PATH = "fov_analysis_short.jpg"  # Image to display
+
+# Callback for mouse click on image
+def onclick(event):
+
+    # Get distance from pixe to center of the image
+    dist = sqrt((240 - event.y)**2 + (320 - event.x)**2)
+
+    # Compute distance
+    print(HEIGHT * tan(radians(ARDUCAM_SLOPE  * dist)))
+
+# Display image and respond to clicks
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.imshow(cv2.imread(IMG_PATH))
+fig.canvas.mpl_connect('button_press_event', onclick)
+plt.show()
+
+
