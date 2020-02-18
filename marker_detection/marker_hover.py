@@ -48,19 +48,30 @@ VEHICLE_POSE_DIR = "marker_detection/logs/pose_data"
 VEHICLE_POSE_BASE = "vehicle_pose"
 VEHICLE_POSE_FILE = file_utils.create_file_name_chronological(VEHICLE_POSE_DIR, VEHICLE_POSE_BASE, "txt")
 
-# Transform the marker pose into the UAV body frame (NED)
+# Transform the marker pose into the NED frame
+# 1) Marker pose is received relative to the camera center (H_cam_ref_marker)
+# 2) Pose is transformed to UAV body coord. system (H_body_ref_cam_ref)
+# 3) Pose is rotated from the body to the NED frame (H_ned_ref_body_ref)
+#     - This is to account for when the drone pitches into the wind during flight
 # marker_pose: list of x,y,z marker position
-def marker_ref_to_body_ref(marker_pose, marker_tracker):
+def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
 
     if marker_tracker.get_marker_type == "aruco":
         # Aruco marker
-        body_transform = BODY_TRANSFORM_ARUCO
+        H_body_ref_cam_ref = BODY_TRANSFORM_ARUCO
     else:
         # Yellow marker
-        body_transform = BODY_TRANSFORM_YELLOW
+        H_body_ref_cam_ref = BODY_TRANSFORM_YELLOW
+
+    pitch = vehicle.attitude.pitch
+    H_ned_ref_body_ref = np.array([[np.cos(pitch),  0, np.sin(pitch), 0],
+                                    [      0,        1,       0,       0],
+                                    [-np.sin(pitch), 0, np.cos(pitch), 0],
+                                    [      0,        0,       0,       1]])
 
     # Transform to body pose; flip axes and translation offset
-    body_pose = np.matmul(body_transform, np.append(marker_pose, 1))
+    body_pose = np.matmul(H_ned_ref_body_ref, np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1)))
+    # body_pose = np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1))
 
     return body_pose[:-1]
 
@@ -162,7 +173,7 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
             marker_pose = marker_tracker.get_pose()
 
             # Transform the marker pose into UAV body frame (NED)
-            marker_pose_body_ref = marker_ref_to_body_ref(marker_pose, marker_tracker)
+            marker_pose_body_ref = marker_ref_to_body_ref(marker_pose, marker_tracker, vehicle)
 
             # PID control; input is the UAV pose relative to the marker (hence the negatives)
             control_pose = np.array([[PID_X(-marker_pose_body_ref[0]),
