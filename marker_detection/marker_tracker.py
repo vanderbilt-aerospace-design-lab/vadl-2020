@@ -164,7 +164,7 @@ class ColorMarkerTracker(MarkerTracker):
                  resolution=480,
                  framerate=30,
                  fps_vid=15,
-                 marker_length=0.24,
+                 marker_length=2.44,
                  freq=DEFAULT_FREQ,
                  debug=0,
                  video_dir=None,
@@ -187,7 +187,7 @@ class ColorMarkerTracker(MarkerTracker):
         # in the LAB color space. Above the threshold, binary thresholding is performed. This was determined to be the
         # best approach for detecting the yellow marker in a large altitude range. The altitude threshold should be
         # empirically determined.
-        self.alt_thresh = 25
+        self.alt_thresh = 0
 
         # Stores each image processing step
         self.undistort_frame = None
@@ -232,7 +232,7 @@ class ColorMarkerTracker(MarkerTracker):
         # At lower altitudes, the marker takes up the majority of the image, and OTSU normalization is ideal, since
         # it dynamically chooses the threshold value to segment between "light" and "not light". At higher altitudes,
         # the marker is too small for OTSU to threshold well, so a binary threshold is used.
-        if alt < self.alt_thresh:
+        if np.abs(alt) < self.alt_thresh:
             # Dynamically threshold lightness
             retval2, self.thresh_light_frame = cv2.threshold(self.lab_space_frame[:, :, 0], 200, 255,
                                                              cv2.THRESH_BINARY | cv2.THRESH_OTSU)
@@ -242,7 +242,7 @@ class ColorMarkerTracker(MarkerTracker):
                                                              cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
-        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 150, 255,
+        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 127, 255,
                                                           cv2.THRESH_BINARY)
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
