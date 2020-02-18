@@ -243,7 +243,7 @@ class ColorMarkerTracker(MarkerTracker):
                                                              cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
-        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 127, 255,
+        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 150, 255,
                                                           cv2.THRESH_BINARY)
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
