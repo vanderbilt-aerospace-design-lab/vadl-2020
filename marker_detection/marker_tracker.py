@@ -187,6 +187,7 @@ class ColorMarkerTracker(MarkerTracker):
         # in the LAB color space. Above the threshold, binary thresholding is performed. This was determined to be the
         # best approach for detecting the yellow marker in a large altitude range. The altitude threshold should be
         # empirically determined.
+
         self.alt_thresh = 0
 
         # Stores each image processing step

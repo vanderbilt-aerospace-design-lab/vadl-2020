@@ -8,41 +8,35 @@ class Controller:
         # Vehicle connection to read pixhawk state from
         self.vehicle = vehicle
 
-        # Basic controller state
-        self.ch1 = 0
-        self.ch2 = 0
-        self.ch3 = 0
-        self.ch4 = 0
-        self.ch5 = 0
-        self.ch6 = 0
-        self.ch7 = 0
-        self.ch8 = 0
-
         # Automatically track various modes
-        self.winch_mode = 0
+        self.connected = False
+        self.winch_mode = "IDLE"
+	self.scoop_mode = "OPEN"
         self.autonomy_mode = 0
 
-        # Add callback for updates to RC_CHANNELS
-        self.vehicle.add_attribute_listener("RC_CHANNELS", self.refresh)
+    	self.vehicle.add_attribute_listener("channels", self.refresh)
 
-    def refresh(self, name, message):
+    # TODO add logic for autonommy modes, automatic winch control 
+    def refresh(self, vehicle_obj, attr_name, values):
 
-        self.ch1 = message.chan1_raw
-        self.ch2 = message.chan2_raw
-        self.ch3 = message.chan3_raw
-        self.ch4 = message.chan4_raw
-        self.ch5 = message.chan5_raw
-        self.ch6 = message.chan6_raw
-        self.ch7 = message.chan7_raw
-        self.ch8 = message.chan8_raw
+	# Update winch mode
+	if values['8'] < 1000:
+	    self.winch_mode = "RAISE_MANUAL"
+	elif values['8'] > 2000:
+	    self.winch_mode = "LOWER_MANUAL"
+	else:
+	    self.winch_mode = "IDLE"
 
-    def print_channels(self):
+	# Update scoop mode
+	if self.scoop_mode == "OPEN" and values['7'] > 1500:
+	    self.scoop_mode = "CLOSED"
+	elif self.scoop_mode == "CLOSED" and values['7'] <= 1500:
+	    self.scoop_mode = "OPEN"
 
-        print("Channel 1:\t" + str(self.ch1))
-        print("Channel 2:\t" + str(self.ch2))
-        print("Channel 3:\t" + str(self.ch3))
-        print("Channel 4:\t" + str(self.ch4))
-        print("Channel 5:\t" + str(self.ch5))
-        print("Channel 6:\t" + str(self.ch6))
-        print("Channel 7:\t" + str(self.ch7))
-        print("Channel 8:\t" + str(self.ch8))
+	# Update autonomy mode
+
+    def print_controller_states(self):
+	print("Winch:\t" + self.winch_mode + "\tScoop:\t" + str(self.scoop_mode))
+
+
+

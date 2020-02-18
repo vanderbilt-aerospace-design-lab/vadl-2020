@@ -23,7 +23,7 @@ VIDEO_NAME = file_utils.create_file_name_date()
 class Camera(object):
     def __init__(self,
                  use_pi=-1,
-                 resolution=(640, 480),
+                 resolution=480,
                  framerate=30):
         self.resolution = None
         self.set_resolution(resolution)
