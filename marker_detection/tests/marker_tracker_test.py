@@ -2,7 +2,7 @@ import os
 import argparse
 from marker_detection.marker_tracker import ArucoTracker, YellowMarkerTracker
 
-DEFAULT_MARKER = "yellow"
+DEFAULT_MARKER = "aruco"
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Tests for marker detection')

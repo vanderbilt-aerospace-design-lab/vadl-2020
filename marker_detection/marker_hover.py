@@ -65,15 +65,15 @@ def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
         # Yellow marker
         H_body_ref_cam_ref = BODY_TRANSFORM_YELLOW
 
-    pitch = vehicle.attitude.pitch
-    H_ned_ref_body_ref = np.array([[np.cos(pitch),  0, np.sin(pitch), 0],
+    pitch = vehicle.attitude.pitch # radians
+    H_ned_ref_body_ref = np.array([[np.cos(pitch),  0, -np.sin(pitch), 0],
                                     [      0,        1,       0,       0],
-                                    [-np.sin(pitch), 0, np.cos(pitch), 0],
+                                    [np.sin(pitch), 0, np.cos(pitch), 0],
                                     [      0,        0,       0,       1]])
 
     # Transform to body pose; flip axes and translation offset
     body_pose = np.matmul(H_ned_ref_body_ref, np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1)))
-    # body_pose = np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1))
+    #body_pose = np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1))
 
     return body_pose[:-1]
 
@@ -203,10 +203,10 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
 
             # Approach the marker at the current altitude until above the marker, then navigate to the hover altitude.
             if np.abs(pose_avg[0]) < HOVER_THRESHOLD and np.abs(pose_avg[1]) < HOVER_THRESHOLD:
-                print("Marker Hover")
+                #print("Marker Hover")
                 alt_hover(vehicle, pose_avg)
             else:
-                print("Approaching Marker")
+                #print("Approaching Marker")
                 marker_approach(vehicle, pose_avg)
 
             if debug > 0 and rs is not None:
