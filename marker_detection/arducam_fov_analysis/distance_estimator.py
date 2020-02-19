@@ -9,22 +9,24 @@
 #
 # --------------------------------------------------------------------------------- #
 
-from math import sqrt, tan, radians
+from math import sqrt, tan, radians, degrees
 import cv2
 from matplotlib import pyplot as plt
 
 ARDUCAM_SLOPE = 0.3222               # Pixel vs. angle (degrees) slope for Arducam with 480x640 resolution
-HEIGHT = 2 + (13/16)                 # Height of camera off the ground
-IMG_PATH = "fov_analysis_short.jpg"  # Image to display
+HEIGHT = 37.4              # Height of camera off the ground
+IMG_PATH = "sz.png"  # Image to display
 
 # Callback for mouse click on image
 def onclick(event):
+    print(event.x, event.y)
 
     # Get distance from pixe to center of the image
     dist = sqrt((240 - event.y)**2 + (320 - event.x)**2)
+    # print(dist)
 
     # Compute distance
-    print(HEIGHT * tan(radians(ARDUCAM_SLOPE  * dist)))
+    # print(ARDUCAM_SLOPE  * dist)
 
 # Display image and respond to clicks
 fig = plt.figure()

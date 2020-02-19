@@ -67,9 +67,10 @@ def main():
 
     print("Tracking")
     while True:
-        tracker.track_marker(alt=30)
+        tracker.track_marker_long_distance(alt=30)
         if tracker.is_marker_found():
-            print(tracker.get_pose())
+            # print(tracker.get_pose())
+            pass
 
 if __name__ == "__main__":
     main()

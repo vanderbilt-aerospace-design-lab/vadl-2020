@@ -241,6 +241,135 @@ class YellowMarkerTracker(ColorMarkerTracker):
 
         self.marker_type = "yellow"
 
+    def track_marker_long_distance(self, alt=25):
+        self.cur_frame_time = time.time()
+        self.cur_frame = self.read()
+        self.true_alt = alt
+
+        # Undistort image to get rid of fisheye distortion
+        # TODO: Remove this undistortion?
+        # TODO: Take video of takeoff, ascent, and travel to sample zone. Determine height needed to detect zone w/ and
+        # TODO: w/o distortion, then make the decision
+        # self.undistort_frame = cv2.undistort(self.cur_frame, self.camera_mat, self.dist_coeffs)
+        self.undistort_frame = self.cur_frame
+
+        # Convert to LAB color space
+        # LAB color space is used to separate lightness from color attributes
+        # L is dark (0) to light (255)
+        # A is Green (0) to Red (255)
+        # B is Blue (0) to Yellow (255)
+        self.lab_space_frame = cv2.cvtColor(self.undistort_frame, cv2.COLOR_BGR2Lab)
+
+        # Blur the image to reduce noise
+        self.lab_space_frame = cv2.GaussianBlur(self.lab_space_frame, (5, 5), 0)
+
+        # Lightness is thresholded since the yellow tarp will most likely be the lightest object in the image.
+        # At lower altitudes, the marker takes up the majority of the image, and OTSU normalization is ideal, since
+        # it dynamically chooses the threshold value to segment between "light" and "not light". At higher altitudes,
+        # the marker is too small for OTSU to threshold well, so a binary threshold is used.
+
+        ## Notes
+        # Dynamic thresholding works terribly in brightness; maybe just get rid of it?
+        # 127 yellow thresh lets in a lot but it's ok because binary light thresh filters it all out
+        # Q: Does binary thresh work well in non-bright conditions?
+        if np.abs(alt) < self.alt_thresh:
+            # Dynamically threshold lightness
+            retval2, self.thresh_light_frame = cv2.threshold(self.lab_space_frame[:, :, 0], 200, 255,
+                                                             cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        else:
+            # Binary threshold lightness
+            retval2, self.thresh_light_frame = cv2.threshold(self.lab_space_frame[:, :, 0], 200, 255,
+                                                             cv2.THRESH_BINARY)
+
+        # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
+        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 135, 255,
+                                                          cv2.THRESH_BINARY)
+
+        # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
+        self.thresh_sum_frame = cv2.bitwise_and(self.thresh_yellow_frame, self.thresh_light_frame)
+
+        # Create kernels for dilution and erosion operations; larger ksize means larger pixel neighborhood where the
+        # operation is taking place
+        se1 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(4, 4))
+        se2 = cv2.getStructuringElement(cv2.MORPH_RECT, ksize=(4, 4))
+
+        # Perform "opening_frame." This is erosion followed by dilation, which reduces noise. The ksize is pretty small,
+        # otherwise the white in the marker is eliminated
+        self.opening_frame = cv2.morphologyEx(self.thresh_sum_frame, cv2.MORPH_OPEN, se1)
+        # self.opening_frame = self.thresh_sum_frame
+
+        # Perform "closing." This is dilution followed by erosion, which fills in black gaps within the marker. This is
+        # necessary if the lightness threshold is not able to get the entire marker at lower altitudes
+        self.processed_frame = cv2.morphologyEx(self.opening_frame, cv2.MORPH_CLOSE, se2)
+        # self.processed_frame = self.opening_frame
+
+        # Find contours
+        # TODO: The return values here are dependent on Opencv 2,3,or 4, so either be sure of which version
+        #  we are using or add some code to check the version
+        _, contours, hierarchy = cv2.findContours(self.processed_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+
+        # Find corners of the contour
+        for c in contours:
+
+            # Approximate the contour
+            peri = cv2.arcLength(c, True)
+            c = cv2.approxPolyDP(c, 0.04 * peri, True)
+            # Keep going if the contour is a square
+            if self.is_rectangle(c):
+
+                # Find extreme points
+                extLeft = tuple(c[c[:, :, 0].argmin()][0])
+                extRight = tuple(c[c[:, :, 0].argmax()][0])
+                extTop = tuple(c[c[:, :, 1].argmin()][0])
+                extBot = tuple(c[c[:, :, 1].argmax()][0])
+
+                # Find the contour center
+                M = cv2.moments(c)
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+
+                # TODO: confirm cx and CY are from top left of image
+                self.true_alt = 37.4
+                c_angle = self.calculate_angle_from_center(cX, cY)
+                expected_pix_area = self.calculate_expected_pixel_area(c_angle, self.true_alt)
+                c_area = cv2.contourArea(c)
+                print(c_area, expected_pix_area)
+
+
+                # Find positional error from center of platform; Pixels
+                err_x = cX - (self.get_resolution()[0] / 2)
+                err_y = (self.get_resolution()[1] / 2) - cY
+
+                # Calculate the scale factor using the pixel marker length
+                self.calculate_scale_factor(peri)
+
+                # Convert to meters
+                err_x *= self.scale_factor
+                err_y *= self.scale_factor
+
+                self.set_pose(np.array([err_x, err_y, self.depth]))
+
+                # Debug
+                self.marker_found = True
+                if self.debug > 0:
+                    self.save_pose()
+                if self.debug > 1:
+                    self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
+                                               cX, cY, self.depth, c)
+                    self.visualize()
+
+                return True
+
+        # Debug
+        self.pose = None
+        self.marker_found = False
+        if self.debug > 0:
+            self.save_pose()
+        if self.debug > 1:
+            self.visualize()
+
+        return False
+
     # This method tracks the color yellow. First, the image is undistorted to account for any lens distortion. Next,
     # it is converted from BGR to LAB color space. The LAB color space is great for color detection since it separates
     # the image into lightness (L), green -> red (*a), and blue -> yellow (*b). Various thresholds (explained within)
@@ -375,7 +504,8 @@ class YellowMarkerTracker(ColorMarkerTracker):
         if not self.marker_found:
             self.detected_frame = self.cur_frame
         elif self.debug > 2:
-            print("Marker Pose: {}".format(self.pose))
+            # print("Marker Pose: {}".format(self.pose))
+            pass
 
         if self.use_pi:
             self.video_writer.write(self.detected_frame)
@@ -466,6 +596,39 @@ class YellowMarkerTracker(ColorMarkerTracker):
         # Determine the *approximate* scale factor
         self.scale_factor = self.marker_length / pixel_length
 
+    def calculate_angle_from_center(self, center_x, center_y):
+        # Get distance from pixels to center of the image
+        ARDUCAM_SLOPE = 0.3222  # Pixel vs. angle (degrees) slope for Arducam with 480x640 resolution
+        dist = np.sqrt((self.resolution[1] / 2 - center_y) ** 2 + (self.resolution[0] / 2 - center_x) ** 2)
+
+        # Compute angle from center
+        return ARDUCAM_SLOPE * dist
+
+    # Angle is expected in degrees
+    # Angle must be between 0 and 80
+    def calculate_expected_pixel_area(self, angle, alt):
+
+        # Constants
+        D = np.linspace(0, 80, 80)
+        PIX_PER_DEG = 3.5
+
+        # Compute distance along ground for each angle
+        g_dist = alt * np.tan(np.radians(D))
+
+        # Compute distance between each angle
+        gap = g_dist.tolist()
+        gap = np.array([gap[i + 1] - gap[i] for i in range(len(gap) - 1)])
+
+        # Compute pixels per foot over each span
+        ppu = PIX_PER_DEG / gap
+
+        # Compute pixels for full tarp
+        ppt = np.square(ppu * 10)
+        if angle >= 80:
+            angle = 79
+
+        return ppt[int(np.floor(angle)) - 1]
+
     # Checks if the contour approximation is a rectangle.
     def is_rectangle(self, approx):
 
@@ -477,7 +640,7 @@ class YellowMarkerTracker(ColorMarkerTracker):
             ar = w / float(h)
 
             # a rectangle will have an aspect ratio that is within this range
-            return True if 0.6 <= ar <= 1.5 else False
+            return True if 0.3 <= ar <= 2.75 else False
         return False
 
 # Tracks an Aruco marker. Marker length is expected in meters

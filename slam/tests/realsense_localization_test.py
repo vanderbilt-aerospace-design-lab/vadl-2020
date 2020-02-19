@@ -1,5 +1,5 @@
 from utils import dronekit_utils
-import slam_evaluation.realsense_localization as realsense_localization
+import slam.realsense_localization as realsense_localization
 import time
 
 def main():
