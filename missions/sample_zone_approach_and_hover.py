@@ -11,14 +11,15 @@ from apscheduler.schedulers.background import BackgroundScheduler
 # Custom packages
 from utils import dronekit_utils, file_utils
 from slam import realsense_localization
-from marker_detection.marker_tracker import ArucoTracker, ColorMarkerTracker
+from marker_detection.marker_tracker import ArucoTracker, YellowMarkerTracker
 from marker_detection.camera import Realsense
 from marker_detection import marker_hover
 
-TAKEOFF_ALTITUDE = 1 # Meters
-SEARCH_ALTITUDE = 10.0 # Meters
-HOVER_ALTITUDE = 4 * 0.3048 # Meters
-DEFAULT_FREQ = 1 # Hz
+TAKEOFF_ALTITUDE = 0.5 # Meters
+SEARCH_ALTITUDE = 0.7 # Meters
+HOVER_ALTITUDE = 2 * 0.3048 # Meters
+DEFAULT_FREQ = 2 # Hz
+MARKER_LENGTH = 0.24
 
 VEHICLE_POSE_DIR = "marker_detection/pose_data"
 VEHICLE_POSE_BASE = "vehicle_pose"
@@ -61,10 +62,11 @@ else:
 
 def main():
 
-    marker_tracker = ColorMarkerTracker(src=args["video"],
+    marker_tracker = YellowMarkerTracker(src=args["video"],
                                         use_pi=args["pi"],
                                         resolution=args["resolution"],
                                         framerate=args["fps"],
+                                        marker_length=MARKER_LENGTH,
                                         freq=args["frequency"],
                                         debug=args["debug"],
                                         video_dir=args["dir"],
