@@ -9,11 +9,16 @@ if __name__ == "__main__":
     # Create VideoStreamer and VideoWriter objects
     vs = VideoStreamer(use_pi=1, resolution=480, framerate=25)
     vw = VideoWriter(video_dir="/home/pi/pi_videos/",
-                     video_file="drone_pi_" + str(time.time()),
+                     video_file="drone_pi_" + str(int(time.time())),
                      resolution=480, framerate=25)
 
+
     # Record indefinitely
-    while True:
-        vw.write(vs.read())
+    print("Recording video, Ctrl+c to stop")
 
+    try:
+        while True:
+            vw.write(vs.read())
 
+    except KeyboardInterrupt:
+        print("\nVideo capture ended")
