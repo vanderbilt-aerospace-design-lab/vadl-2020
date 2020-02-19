@@ -3,7 +3,7 @@ import os
 from camera import VideoStreamer, VideoWriter
 
 ''' Record a video with a USB/webcam or the Picam.'''
-VIDEO_DIR = "marker_detection/videos"
+VIDEO_DIR = "marker_detection/logs/videos"
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker')
@@ -34,9 +34,9 @@ else:
 # Currently only supports 1080p and 480p
 # The Arducam is actually 1920 x 1088 and fails w/ 1080 set
 if args["resolution"] == 1080:
-    args["resolution"] = (1920, 1088)
+    args["resolution"] = 1088
 else:
-    args["resolution"] = (640, 480)
+    args["resolution"] = 480
 
 
 def main():
