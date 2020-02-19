@@ -66,10 +66,10 @@ def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
         H_body_ref_cam_ref = H_BODY_REF_CAM_REF_YELLOW
 
     pitch = vehicle.attitude.pitch
-    H_ned_ref_body_ref = np.array([[np.cos(pitch),   0, -np.sin(pitch),  BODY_TRANSLATION_X*np.cos(pitch)],
-                                    [      0,        1,       0,         BODY_TRANSLATION_Y],
-                                    [np.sin(pitch), 0, np.cos(pitch),    BODY_TRANSLATION_Z],
-                                    [      0,        0,       0,                 1]])
+    H_ned_ref_body_ref = np.array([[np.cos(pitch),   0, -np.sin(pitch),  0],
+                                    [      0,        1,       0,         0],
+                                    [np.sin(pitch), 0, np.cos(pitch),    0],
+                                    [      0,        0,       0,         1]])
 
     # Transform to body pose; flip axes and translation offset
     body_pose = np.matmul(H_ned_ref_body_ref, np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1)))
