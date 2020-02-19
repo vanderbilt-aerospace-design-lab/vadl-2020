@@ -18,7 +18,7 @@ from marker_detection import marker_hover
 TAKEOFF_ALTITUDE = 0.5 # Meters
 SEARCH_ALTITUDE = 0.7 # Meters
 HOVER_ALTITUDE = 2 * 0.3048 # Meters
-DEFAULT_FREQ = 1 # Hz
+DEFAULT_FREQ = 2 # Hz
 MARKER_LENGTH = 0.24
 
 VEHICLE_POSE_DIR = "marker_detection/pose_data"

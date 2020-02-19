@@ -1,5 +1,4 @@
 from camera import VideoStreamer, VideoWriter
-from utils import file_utils
 from abc import abstractmethod
 from math import pi
 import cv2
@@ -14,7 +13,7 @@ POSE_DIR = "marker_detection/logs/pose_data"
 file_utils.make_dir(POSE_DIR)
 POSE_FILE = file_utils.create_file_name_date() + ".txt" # Default pose file name
 
-DEFAULT_FREQ = 30 # Hz
+DEFAULT_FREQ = 20 # Hz
 
 DEFAULT_YELLOW_MARKER_LENGTH = 2.44
 DEFAULT_YELLOW_MARKER_WIDTH = 2.44
@@ -138,8 +137,6 @@ class MarkerTracker(VideoStreamer):
             time.sleep(self.period - (time.time() - self.cur_frame_time))
         except IOError:
             pass
-            #if self.debug > 2:
-             #   print("WARNING: Desired frequency is too fast")
 
     def stop(self):
         self.vs.stop()
