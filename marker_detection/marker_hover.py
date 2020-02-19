@@ -26,8 +26,8 @@ RUNNING_AVG_LENGTH = 10
 # UAV coord. system is considered to be the x and y centers, and z is equal with the 
 # bottom of the legs
 BODY_TRANSLATION_X = 0.102
-BODY_TRANSLATION_Y = -0.0058
-BODY_TRANSLATION_Z = -0.0075
+BODY_TRANSLATION_Y = 0
+BODY_TRANSLATION_Z = 0
 
 H_BODY_REF_CAM_REF_ARUCO = np.array([[0, -1, 0, 0],
                                     [1, 0, 0, 0],
@@ -66,7 +66,7 @@ def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
         H_body_ref_cam_ref = H_BODY_REF_CAM_REF_YELLOW
 
     pitch = vehicle.attitude.pitch
-    H_ned_ref_body_ref = np.array([[np.cos(pitch),   0, -np.sin(pitch),  BODY_TRANSLATION_X],
+    H_ned_ref_body_ref = np.array([[np.cos(pitch),   0, -np.sin(pitch),  BODY_TRANSLATION_X*np.cos(pitch)],
                                     [      0,        1,       0,         BODY_TRANSLATION_Y],
                                     [np.sin(pitch), 0, np.cos(pitch),    BODY_TRANSLATION_Z],
                                     [      0,        0,       0,                 1]])
