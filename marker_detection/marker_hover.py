@@ -17,15 +17,35 @@ from utils import dronekit_utils, file_utils
 from simple_pid import PID
 from slam import realsense_localization
 
-HOVER_THRESHOLD = 0.1 # Meters
-MAX_SEARCH_TIME = 5 # Seconds
-DETECTION_TIME = 3 # Seconds
-RUNNING_AVG_LENGTH = 10
+HOVER_THRESHOLD = 0.1 # Meters; Max XY positional error allowed to begin descent to hover altitude
+MAX_SEARCH_TIME = 5 # Seconds; How long to search for the marker before giving up
+DETECTION_TIME = 3 # Seconds; How long the marker must be detected to be considered found
+RUNNING_AVG_LENGTH = 10 # Higher will produce more smoothing at the cost of lag
 
+# Distance to the camera relative to the UAV in meters
+# UAV coord. system is considered to be the x and y centers, and z is equal with the lid
+BODY_TRANSLATION_X = 0.102
+BODY_TRANSLATION_Y = -.0058
+BODY_TRANSLATION_Z = 0.0242
+
+# Pose transform from Aruco to UAV body coord. system
+H_BODY_REF_CAM_REF_ARUCO = np.array([[0, -1, 0, BODY_TRANSLATION_X],
+                                     [1,  0, 0, BODY_TRANSLATION_Y],
+                                     [0,  0, 1, BODY_TRANSLATION_Z],
+                                     [0,  0, 0, 1]])
+
+# Pose transform from yellow marker to UAV body coord. system
+H_BODY_REF_CAM_REF_YELLOW = np.array([[0, -1, 0, BODY_TRANSLATION_X],
+                                      [-1, 0, 0, BODY_TRANSLATION_Y],
+                                      [0,  0, 1, BODY_TRANSLATION_Z],
+                                      [0,  0, 0, 1]])
+
+# PID gains for sending navigation commands
 PID_X = PID(0.35, 0, 0.005, setpoint=0)
 PID_Y = PID(0.35, 0, 0.005, setpoint=0)
-PID_Z = PID(0.35, 0, 0.005, setpoint=0) # Setpoint will be set later
+PID_Z = PID(0.35, 0, 0.005, setpoint=0) # Setpoint is set to hover altitude later
 
+# Should be equal to or higher than frequency of your image processing algorithm
 PID_X.sample_time = 0.01
 PID_Y.sample_time = 0.01
 PID_Z.sample_time = 0.01
@@ -36,25 +56,41 @@ VEHICLE_POSE_FILE = file_utils.create_file_name_chronological(VEHICLE_POSE_DIR, 
 
 # Transform the marker pose into the UAV body frame (NED)
 # marker_pose: list of x,y,z marker position
-def marker_ref_to_body_ref(marker_pose, marker_tracker):
+def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
 
+    # Select camera to body transform
     if marker_tracker.get_marker_type == "aruco":
+
         # Aruco marker
-        body_transform = np.array([[0, -1, 0, 0],
-                                   [1, 0, 0, 0],
-                                   [0, 0, 1, 0],
-                                   [0, 0, 0, 1]])
+        H_body_ref_cam_ref = H_BODY_REF_CAM_REF_ARUCO
     else:
+
         # Yellow marker
-        body_transform = np.array([[0, -1, 0, 0],
-                                   [-1, 0, 0, 0],
-                                   [0, 0, 1, 0],
-                                   [0, 0, 0, 1]])
+        H_body_ref_cam_ref = H_BODY_REF_CAM_REF_YELLOW
 
-    # Transform to body pose
-    body_pose = np.matmul(np.append(marker_pose, 1), body_transform)
 
-    return body_pose[:-1]
+    # Transform from body to NED coord. system, relative to the UAV origin
+    roll = vehicle.attitude.roll
+    pitch = vehicle.attitude.pitch
+
+    # Z-component is removed, since depth is always a 2D calculation here
+    roll_transform = np.array([[1,      0,             0,         0],
+                         [0, np.cos(roll),  -np.sin(roll),  0],
+                         [0,      0,             1,         0],
+                         [0,      0,             0,        1]])
+
+    pitch_transform = np.array([[np.cos(pitch),   0, np.sin(pitch),   0],
+                          [      0,         1,       0,         0],
+                          [-np.sin(pitch),  0, np.cos(pitch),   0],
+                          [      0,         0,       0,         1]])
+
+    # Transform to NED offset pose - AKA NED relative to UAV's current location
+    # When using the Realsense, NED is equivalent to FRD (Forward Right Down)
+    ned_offset_pose = np.matmul(roll_transform, np.matmul(pitch_transform,
+                                                    np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1))))
+
+
+    return ned_offset_pose[:-1]
 
 # Ascend to desired altitude while searching for the marker. Once it has been detected, return True.
 # If not detected after a set time, return False
@@ -139,8 +175,7 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
     time_found = time.time()
     print("Tracking marker...")
 
-    while True:
-    # while vehicle.mode == VehicleMode("GUIDED"):
+    while dronekit_utils.is_guided(vehicle):
 
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
@@ -154,7 +189,7 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
             marker_pose = marker_tracker.get_pose()
 
             # Transform the marker pose into UAV body frame (NED)
-            marker_pose_body_ref = marker_ref_to_body_ref(marker_pose, marker_tracker)
+            marker_pose_body_ref = marker_ref_to_body_ref(marker_pose, marker_tracker, vehicle)
 
             # PID control; input is the UAV pose relative to the marker (hence the negatives)
             control_pose = np.array([[PID_X(-marker_pose_body_ref[0]),

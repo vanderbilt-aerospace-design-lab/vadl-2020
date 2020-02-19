@@ -15,10 +15,10 @@ from marker_detection.marker_tracker import ArucoTracker, YellowMarkerTracker
 from marker_detection.camera import Realsense
 from marker_detection import marker_hover
 
-TAKEOFF_ALTITUDE = 1 # Meters
-SEARCH_ALTITUDE = 5.0 # Meters
-HOVER_ALTITUDE = 4 * 0.3048 # Meters
-DEFAULT_FREQ = 1 # Hz
+TAKEOFF_ALTITUDE = 0.5 # Meters
+SEARCH_ALTITUDE = 0.7 # Meters
+HOVER_ALTITUDE = 2 * 0.3048 # Meters
+DEFAULT_FREQ = 2 # Hz
 MARKER_LENGTH = 0.24
 
 VEHICLE_POSE_DIR = "marker_detection/pose_data"
@@ -79,24 +79,24 @@ def main():
     rs = Realsense()
 
     # Create a scheduler to send Mavlink commands in the background
-#    sched = BackgroundScheduler()
+    sched = BackgroundScheduler()
 
     # Begin realsense localization in the background
- #   realsense_localization.start(vehicle, rs=rs, scheduler=sched)
+    realsense_localization.start(vehicle, rs=rs, scheduler=sched)
 
-  #  time.sleep(10)
+    time.sleep(10)
 
     # Arm the UAV
-  #  dronekit_utils.arm_realsense_mode(vehicle)
+    dronekit_utils.arm_realsense_mode(vehicle)
 
     # Takeoff and fly to a target altitude
-  #  dronekit_utils.takeoff(vehicle, TAKEOFF_ALTITUDE)
+    dronekit_utils.takeoff(vehicle, TAKEOFF_ALTITUDE)
 
     # Give time to stabilize in flight
-  #  time.sleep(2)
+    time.sleep(2)
 
     # Set the UAV speed
-  #  vehicle.airspeed = 0.10
+    vehicle.airspeed = 0.10
 
     # Search for sample zone
     print("Searching for marker.")
