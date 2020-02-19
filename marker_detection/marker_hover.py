@@ -29,14 +29,14 @@ BODY_TRANSLATION_X = 0.102
 BODY_TRANSLATION_Y = -0.0058
 BODY_TRANSLATION_Z = -0.0075
 
-BODY_TRANSFORM_ARUCO = np.array([[0, -1, 0, BODY_TRANSLATION_X],
-                                   [1, 0, 0, BODY_TRANSLATION_Y],
-                                   [0, 0, 1, BODY_TRANSLATION_Z],
-                                   [0, 0, 0, 1]])
-BODY_TRANSFORM_YELLOW = np.array([[0, -1, 0, BODY_TRANSLATION_X],
-                                   [-1, 0, 0, BODY_TRANSLATION_Y],
-                                   [0, 0, 1, BODY_TRANSLATION_Z],
-                                   [0, 0, 0, 1]])
+H_BODY_REF_CAM_REF_ARUCO = np.array([[0, -1, 0, 0],
+                                    [1, 0, 0, 0],
+                                    [0, 0, 1, 0],
+                                    [0, 0, 0, 1]])
+H_BODY_REF_CAM_REF_YELLOW = np.array([[0, -1, 0, 0],
+                                      [-1, 0, 0, 0],
+                                      [0, 0, 1, 0],
+                                      [0, 0, 0, 1]])
 
 PID_X = PID(0.35, 0, 0.005, setpoint=0)
 PID_Y = PID(0.35, 0, 0.005, setpoint=0)
@@ -60,19 +60,23 @@ def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
 
     if marker_tracker.get_marker_type == "aruco":
         # Aruco marker
-        H_body_ref_cam_ref = BODY_TRANSFORM_ARUCO
+        H_body_ref_cam_ref = H_BODY_REF_CAM_REF_ARUCO
     else:
         # Yellow marker
-        H_body_ref_cam_ref = BODY_TRANSFORM_YELLOW
+        H_body_ref_cam_ref = H_BODY_REF_CAM_REF_YELLOW
 
-    pitch = vehicle.attitude.pitch # radians
-    H_ned_ref_body_ref = np.array([[np.cos(pitch),  0, -np.sin(pitch), 0],
-                                    [      0,        1,       0,       0],
-                                    [np.sin(pitch), 0, np.cos(pitch), 0],
-                                    [      0,        0,       0,       1]])
+    pitch = vehicle.attitude.pitch
+    H_ned_ref_body_ref = np.array([[np.cos(pitch),   0, -np.sin(pitch),  BODY_TRANSLATION_X],
+                                    [      0,        1,       0,         BODY_TRANSLATION_Y],
+                                    [np.sin(pitch), 0, np.cos(pitch),    BODY_TRANSLATION_Z],
+                                    [      0,        0,       0,                 1]])
 
     # Transform to body pose; flip axes and translation offset
-    body_pose = np.matmul(H_ned_ref_body_ref, np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1)))
+    print(H_cam_ref_marker[1])
+    body_pose = np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1))
+    print(body_pose[0])
+    body_pose = np.matmul(H_ned_ref_body_ref, body_pose)
+    print(body_pose[0])
     #body_pose = np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1))
 
     return body_pose[:-1]
@@ -177,7 +181,7 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
             # Transform the marker pose into UAV body frame (NED)
 
             marker_pose_body_ref = marker_ref_to_body_ref(marker_pose, marker_tracker, vehicle)
-            print(marker_pose_body_ref)
+            #print(marker_pose_body_ref)
 
             # PID control; input is the UAV pose relative to the marker (hence the negatives)
             control_pose = np.array([[PID_X(-marker_pose_body_ref[0]),
