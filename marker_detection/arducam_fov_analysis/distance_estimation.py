@@ -59,7 +59,8 @@ def log_attitude_and_video(log_dir, vs, duration=30):
     vehicle = connect_vehicle()
 
     # Open new log file
-    new_dir_name = os.mkdir(log_dir + "/log_" + str(int(time.time())))
+    new_dir_name = log_dir + "/log_" + str(int(time.time()))
+    os.mkdir(new_dir_name)
     att_log = open(new_dir_name + "/" + "attitude_log.txt")
 
     # Create a VideoWriter object
