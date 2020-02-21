@@ -16,8 +16,8 @@ import os
 from marker_detection.camera import *
 from utils.dronekit_utils import *
 
-DEG_PER_PIX = 160 / 640
-PIX_PER_DEG = 1 / DEG_PER_PIX
+DEG_PER_PIX = 160.0 / 640.0
+PIX_PER_DEG = 1.0 / DEG_PER_PIX
 
 
 # Function to compute ground point in an image given roll and pitch of camera
@@ -26,14 +26,14 @@ PIX_PER_DEG = 1 / DEG_PER_PIX
 def calc_gnd_pt_offset(roll, pitch, ppd=PIX_PER_DEG):
 
     # Find center of hemisphere in pixels
-    diam = ppd * 180
-    center = [diam / 2, diam / 2]
+    diam = ppd * 180.0
+    center = [diam / 2.0, diam / 2.0]
 
     # Precompute some values
-    t = diam / 2
+    t = diam / 2.0
     t_sq = t**2
-    sin_2_p = sin(radians(pitch)) ** 2
-    sin_2_r = sin(radians(roll)) ** 2
+    sin_2_p = sin(radians(pitch)) ** 2.0
+    sin_2_r = sin(radians(roll)) ** 2.0
 
     # Compute x^2, x
     x_sq = (t_sq * sin_2_r * (1 - sin_2_p)) / (1 - sin_2_r * sin_2_p + 0.00000001)
@@ -61,12 +61,16 @@ def log_attitude_and_video(log_dir, vs, duration=30):
     # Open new log file
     new_dir_name = log_dir + "/log_" + str(int(time.time()))
     os.mkdir(new_dir_name)
-    att_log = open(new_dir_name + "/" + "attitude_log.txt")
+    att_log = open(new_dir_name + "/" + "attitude_log.txt", 'w+')
 
     # Create a VideoWriter object
     vw = VideoWriter(video_dir=new_dir_name,
                      video_file="video_log",
                      resolution=480, framerate=10)
+
+
+    # Print start message
+    print("Recording attitude and video data for " + str(duration) + " seconds")
 
     # Record for specified duration
     start = time.time()
