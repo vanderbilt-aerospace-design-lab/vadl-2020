@@ -18,9 +18,10 @@ from simple_pid import PID
 from slam import realsense_localization
 
 HOVER_THRESHOLD = 0.1 # Meters; Max XY positional error allowed to begin descent to hover altitude
-MAX_SEARCH_TIME = 5 # Seconds; How long to search for the marker before giving up
+MAX_SEARCH_TIME = 200 # Seconds; How long to search for the marker before giving up
 DETECTION_TIME = 3 # Seconds; How long the marker must be detected to be considered found
 RUNNING_AVG_LENGTH = 10 # Higher will produce more smoothing at the cost of lag
+DEFAULT_SEARCH_ALT = 2 # Meters
 
 # Distance to the camera relative to the UAV in meters
 # UAV coord. system is considered to be the x and y centers, and z is equal with the lid
@@ -92,49 +93,82 @@ def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
 
     return ned_offset_pose[:-1]
 
-# Ascend to desired altitude while searching for the marker. Once it has been detected, return True.
-# If not detected after a set time, return False
-def marker_search(vehicle, marker_tracker, search_alt=None):
+# Initial search for the marker over a long distance
+# Ascend to desired search altitude
+# Search for the marker for a set time period. If detection consistency is > 95%, return True
+def marker_search_long_range(vehicle, marker_tracker, search_alt=DEFAULT_SEARCH_ALT):
 
-    marker_found = False
-    time_found = 0
-    search_time = time.time()
+    marker_list = [] # Keep track of potential markers, how many times they've been detected, and their pose
+
+    start_time = time.time()
 
     # Ascend to search altitude
-    dronekit_utils.move_relative_alt(vehicle, search_alt)
+    # dronekit_utils.move_relative_alt(vehicle, search_alt)
+    #
+    # Wait until the vehicle reaches its search altitude
+    # dronekit_utils.wait_for_nav_body_command(vehicle)
 
-    # Search for the marker. If it has been consistently detected for more than 3 seconds, return True
-    while not marker_found or time.time() - time_found < DETECTION_TIME:
+    # Search for the marker for a set amount of time
+    while time.time() - start_time < MAX_SEARCH_TIME:
 
-        marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
+        # Track marker in image frame
+        marker_tracker.track_marker_long_distance(alt=30)
 
         if marker_tracker.is_marker_found():
 
-            # Reset search time
-            search_time = time.time()
+            # Get marker pose
+            marker_pose = marker_tracker.get_pose()
 
-            # This is the first time the marker has been detected ever or after detection has been lost
-            if not marker_found:
-                print("found")
+            # Marker consistency check
+            # When a new marker is detected, it is compared to all previously detected markers. If it closely matches
+            # a previously detected marker, then it is counted as an additional detection of the previous marker.
+            # This allows for outliers to be detected and ignored
+            if marker_list:
 
-                marker_found = True
-                time_found = time.time()
+                # Calculate the difference between current marker pose and all previous marker poses
+                diff_list = [mpose[1] - marker_pose for mpose in marker_list]
 
-        elif not marker_tracker.is_marker_found():
+                # Calculate the average differences between the markers
+                diff_avg = [np.average(np.abs(diff)) for diff in diff_list]
 
-            # Reset found timer
-            marker_found = False
-            time_found = 0
+                # Find the previous marker that most closely matches the current marker
+                closest_match = np.amin(diff_avg)
+                closest_match_idx = int(np.argmin(diff_avg))
+                # TODO: Add 0,1 to 0s
+                if np.all(np.abs(diff_list[closest_match_idx] / marker_list[closest_match_idx][1]) < 0.20):
+                    marker_list[closest_match_idx][0] += 1
+                else:
 
-            # Stop searching if it has been too long
-            if time.time() - search_time > MAX_SEARCH_TIME:
-                print("Search failed")
-                return False
+                    # First marker added to list
+                    marker_list.append([1, marker_pose])
+            else:
+                marker_list.append([1, marker_pose])
 
-    return True
+    if marker_list:
+        most_detected_marker = np.amax([marker_count[0] for marker_count in marker_list])
+        most_detected_marker_idx = int(np.argmax([marker_count[0] for marker_count in marker_list]))
 
+        if most_detected_marker > 5:
+            return True, marker_list[most_detected_marker_idx]
+
+    return False
+
+def marker_search_close_range(vehicle, marker_tracker):
+    pass
+
+def marker_approach(vehicle, marker_tracker, marker_pose):
+
+    # Move 80% of the way to the estimated marker position
+    nav_command = 0.80 * marker_ref_to_body_ref(marker_pose, marker_tracker, vehicle)
+
+    dronekit_utils.goto_position_target_body_offset_ned(vehicle,
+                                                        forward=nav_command[0],
+                                                        right=nav_command[1],
+                                                        down=0)
+
+    #
 # Navigate towards the marker at the current altitude
-def marker_approach(vehicle, pose_avg):
+def marker_center(vehicle, pose_avg):
 
     # Send position command to the vehicle
     dronekit_utils.goto_position_target_body_offset_ned(vehicle,
@@ -143,7 +177,7 @@ def marker_approach(vehicle, pose_avg):
                                                         down=0)
 
 # Navigate towards the marker and the desired hovering altitude
-def alt_hover(vehicle, pose_avg):
+def marker_alt_hover(vehicle, pose_avg):
 
     # Send position command to the vehicle
     dronekit_utils.goto_position_target_body_offset_ned(vehicle,
@@ -216,10 +250,10 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
             # Approach the marker at the current altitude until above the marker, then navigate to the hover altitude.
             if np.abs(pose_avg[0]) < HOVER_THRESHOLD and np.abs(pose_avg[1]) < HOVER_THRESHOLD:
                 print("Marker Hover")
-                alt_hover(vehicle, pose_avg)
+                marker_alt_hover(vehicle, pose_avg)
             else:
                 print("Approaching Marker")
-                marker_approach(vehicle, pose_avg)
+                marker_center(vehicle, pose_avg)
 
             if debug > 0 and rs is not None:
                 data = rs.read()

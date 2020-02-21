@@ -47,7 +47,7 @@ def main():
     time.sleep(10)
 
     # Set the UAV speed
-    vehicle.airspeed = 0.10
+    vehicle.airspeed = args["speed"]
 
     # Arm the UAV
     dronekit_utils.arm_realsense_mode(vehicle)

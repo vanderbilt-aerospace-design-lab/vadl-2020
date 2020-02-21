@@ -107,6 +107,46 @@ def takeoff(vehicle, aTargetAltitude):
             break
         time.sleep(1)
 
+# Target position as list or np array, local NED
+def wait_for_nav_ned_command(vehicle, command, debug=0):
+
+    starting_location = np.array([[vehicle.location.local_frame.north,
+                                 vehicle.location.local_frame.east,
+                                 vehicle.location.local_frame.down]])
+    while True:
+        cur_location = np.array([[vehicle.location.local_frame.north,
+                                 vehicle.location.local_frame.east,
+                                 vehicle.location.local_frame.down]])
+
+        # Break and return from function just below target altitude
+        if np.all(np.abs(cur_location) >= (np.abs(starting_location + command)) * 0.95):
+            if debug:
+                print("Reached target position")
+            break
+        time.sleep(1)
+
+# Waits for a command relative to UAV body to complete
+# Since this is not rel. to NED, just waits for the position to stop changing
+def wait_for_nav_body_command(vehicle):
+    count = 0
+
+    while count < 3:
+        prev_location = np.array([[vehicle.location.local_frame.north,
+                                   vehicle.location.local_frame.east,
+                                   vehicle.location.local_frame.down]])
+        time.sleep(1)
+
+        cur_location = np.array([[vehicle.location.local_frame.north,
+                                   vehicle.location.local_frame.east,
+                                   vehicle.location.local_frame.down]])
+
+        # Break and return from function just below target altitude
+        if np.all(np.abs(cur_location - prev_location) < 0.1):
+            count += 1
+        else:
+            count = 0
+
+
 def land(vehicle):
     print("Landing...")
     vehicle.mode = VehicleMode("LAND")

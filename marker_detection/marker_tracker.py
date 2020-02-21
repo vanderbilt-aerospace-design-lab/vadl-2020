@@ -197,7 +197,7 @@ class ColorMarkerTracker(MarkerTracker):
         # best approach for detecting the yellow marker in a large altitude range. The altitude threshold should be
         # empirically determined.
 
-        self.alt_thresh = 0
+        self.alt_thresh = 5 * 0.3048 # Meters
 
         # Stores each image processing step
         self.undistort_frame = None
@@ -240,6 +240,13 @@ class YellowMarkerTracker(ColorMarkerTracker):
                                                  pose_file=pose_file)
 
         self.marker_type = "yellow"
+        self.c = None
+        self.extBot = None
+        self.extLeft = None
+        self.extRight = None
+        self.extTop = None
+        self.cX = None
+        self.cY = None
 
     def track_marker_long_distance(self, alt=25):
         self.cur_frame_time = time.time()
@@ -250,8 +257,8 @@ class YellowMarkerTracker(ColorMarkerTracker):
         # TODO: Remove this undistortion?
         # TODO: Take video of takeoff, ascent, and travel to sample zone. Determine height needed to detect zone w/ and
         # TODO: w/o distortion, then make the decision
-        # self.undistort_frame = cv2.undistort(self.cur_frame, self.camera_mat, self.dist_coeffs)
-        self.undistort_frame = self.cur_frame
+        self.undistort_frame = cv2.undistort(self.cur_frame, self.camera_mat, self.dist_coeffs)
+        # self.undistort_frame = self.cur_frame
 
         # Convert to LAB color space
         # LAB color space is used to separate lightness from color attributes
@@ -282,6 +289,7 @@ class YellowMarkerTracker(ColorMarkerTracker):
                                                              cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
+        # TODO: Change back to 135
         retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 135, 255,
                                                           cv2.THRESH_BINARY)
 
@@ -309,36 +317,38 @@ class YellowMarkerTracker(ColorMarkerTracker):
         _, contours, hierarchy = cv2.findContours(self.processed_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
         # Find corners of the contour
-        for c in contours:
+        if len(contours) >= 1:
+            # Take contour w/ max area; the marker will always be the largest contour in the image
+            self.c = max(contours, key=cv2.contourArea)
 
             # Approximate the contour
-            peri = cv2.arcLength(c, True)
-            c = cv2.approxPolyDP(c, 0.04 * peri, True)
+            peri = cv2.arcLength(self.c, True)
+            self.c = cv2.approxPolyDP(self.c, 0.04 * peri, True)
             # Keep going if the contour is a square
-            if self.is_rectangle(c):
+            if self.is_rectangle(self.c):
 
                 # Find extreme points
-                extLeft = tuple(c[c[:, :, 0].argmin()][0])
-                extRight = tuple(c[c[:, :, 0].argmax()][0])
-                extTop = tuple(c[c[:, :, 1].argmin()][0])
-                extBot = tuple(c[c[:, :, 1].argmax()][0])
+                self.extLeft = tuple(self.c[self.c[:, :, 0].argmin()][0])
+                self.extRight = tuple(self.c[self.c[:, :, 0].argmax()][0])
+                self.extTop = tuple(self.c[self.c[:, :, 1].argmin()][0])
+                self.extBot = tuple(self.c[self.c[:, :, 1].argmax()][0])
 
                 # Find the contour center
-                M = cv2.moments(c)
-                cX = int(M["m10"] / M["m00"])
-                cY = int(M["m01"] / M["m00"])
+                M = cv2.moments(self.c)
+                self.cX = int(M["m10"] / M["m00"])
+                self.cY = int(M["m01"] / M["m00"])
 
                 # TODO: confirm cx and CY are from top left of image
                 self.true_alt = 37.4
-                c_angle = self.calculate_angle_from_center(cX, cY)
+                c_angle = self.calculate_angle_from_center(self.cX, self.cY)
                 expected_pix_area = self.calculate_expected_pixel_area(c_angle, self.true_alt)
-                c_area = cv2.contourArea(c)
-                print(c_area, expected_pix_area)
+                c_area = cv2.contourArea(self.c)
+                # print(c_area, expected_pix_area)
 
 
                 # Find positional error from center of platform; Pixels
-                err_x = cX - (self.get_resolution()[0] / 2)
-                err_y = (self.get_resolution()[1] / 2) - cY
+                err_x = self.cX - (self.get_resolution()[0] / 2)
+                err_y = (self.get_resolution()[1] / 2) - self.cY
 
                 # Calculate the scale factor using the pixel marker length
                 self.calculate_scale_factor(peri)
@@ -354,8 +364,7 @@ class YellowMarkerTracker(ColorMarkerTracker):
                 if self.debug > 0:
                     self.save_pose()
                 if self.debug > 1:
-                    self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
-                                               cX, cY, self.depth, c)
+                    self.visualize_marker_pose()
                     self.visualize()
 
                 return True
@@ -417,7 +426,7 @@ class YellowMarkerTracker(ColorMarkerTracker):
                                                              cv2.THRESH_BINARY)
 
         # Threshold yellow; Everything from 0 to 127 in the B space is made 0 - these are blueish colors
-        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 127, 255,
+        retval1, self.thresh_yellow_frame = cv2.threshold(self.lab_space_frame[:, :, 2], 135, 255,
                                                           cv2.THRESH_BINARY)
 
         # Combine the yellow and lightness thresholds, letting through only the pixels that are white in each image
@@ -445,29 +454,29 @@ class YellowMarkerTracker(ColorMarkerTracker):
         if len(contours) >= 1:
 
             # Take contour w/ max area; the marker will always be the largest contour in the image
-            c = max(contours, key=cv2.contourArea)
+            self.c = max(contours, key=cv2.contourArea)
 
             # Approximate the contour
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.03 * peri, True)
+            peri = cv2.arcLength(self.c, True)
+            approx = cv2.approxPolyDP(self.c, 0.03 * peri, True)
             # Keep going if the contour is a square
             if self.is_rectangle(approx):
-                c = approx
+                self.c = approx
 
                 # Find extreme points
-                extLeft = tuple(c[c[:, :, 0].argmin()][0])
-                extRight = tuple(c[c[:, :, 0].argmax()][0])
-                extTop = tuple(c[c[:, :, 1].argmin()][0])
-                extBot = tuple(c[c[:, :, 1].argmax()][0])
+                self.extLeft = tuple(self.c[self.c[:, :, 0].argmin()][0])
+                self.extRight = tuple(self.c[self.c[:, :, 0].argmax()][0])
+                self.extTop = tuple(self.c[self.c[:, :, 1].argmin()][0])
+                self.extBot = tuple(self.c[self.c[:, :, 1].argmax()][0])
 
                 # Find the contour center
-                M = cv2.moments(c)
-                cX = int(M["m10"] / M["m00"])
-                cY = int(M["m01"] / M["m00"])
+                M = cv2.moments(self.c)
+                self.cX = int(M["m10"] / M["m00"])
+                self.cY = int(M["m01"] / M["m00"])
 
                 # Find positional error from center of platform; Pixels
-                err_x = cX - (self.get_resolution()[0] / 2)
-                err_y = (self.get_resolution()[1] / 2) - cY
+                err_x = self.cX - (self.get_resolution()[0] / 2)
+                err_y = (self.get_resolution()[1] / 2) - self.cY
 
                 # Calculate the scale factor using the pixel marker length
                 self.calculate_scale_factor(peri)
@@ -483,8 +492,7 @@ class YellowMarkerTracker(ColorMarkerTracker):
                 if self.debug > 0:
                     self.save_pose()
                 if self.debug > 1:
-                    self.visualize_marker_pose(extLeft, extRight, extTop, extBot,
-                                                               cX, cY, self.depth, c)
+                    self.visualize_marker_pose()
                     self.visualize()
 
                 return True
@@ -558,35 +566,35 @@ class YellowMarkerTracker(ColorMarkerTracker):
             self.video_writer.write(all_frames)
 
     # Draw the marker corners and pose info on the image for debugging.
-    def visualize_marker_pose(self, extLeft, extRight, extTop, extBot, cX, cY, depth, c):
+    def visualize_marker_pose(self):
         self.detected_frame = self.cur_frame
 
         # Draw extreme points on image
-        cv2.circle(self.detected_frame, extLeft, 8, (255, 0, 0), -1)
-        cv2.circle(self.detected_frame, extRight, 8, (255, 0, 0), -1)
-        cv2.circle(self.detected_frame, extTop, 8, (255, 0, 255), -1)
-        cv2.circle(self.detected_frame, extBot, 8, (0, 0, 255), -1)
+        cv2.circle(self.detected_frame, self.extLeft, 8, (255, 0, 0), -1)
+        cv2.circle(self.detected_frame, self.extRight, 8, (255, 0, 0), -1)
+        cv2.circle(self.detected_frame, self.extTop, 8, (255, 0, 255), -1)
+        cv2.circle(self.detected_frame, self.extBot, 8, (0, 0, 255), -1)
 
         # Draw center
-        cv2.circle(self.detected_frame, (cX, cY), 7, (255, 255, 255), -1)
-        cv2.putText(self.detected_frame, "center", (cX + 20, cY + 20),
+        cv2.circle(self.detected_frame, (self.cX, self.cY), 7, (255, 255, 255), -1)
+        cv2.putText(self.detected_frame, "center", (self.cX + 20, self.cY + 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Draw depth
-        cv2.putText(self.detected_frame, "Distance: {}".format(np.around(depth, 1)), (cX - 40, cY - 20),
+        cv2.putText(self.detected_frame, "Distance: {}".format(np.around(self.depth, 1)), (self.cX - 40, self.cY - 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Draw true altitude
-        cv2.putText(self.detected_frame, "Altitude: {}".format(np.around(self.true_alt, 1)), (cX - 40, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        cv2.putText(self.detected_frame, "Altitude: {}".format(np.around(self.true_alt, 1)), (self.cX - 40, self.cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Draw XY error
         cv2.putText(self.detected_frame,
                     "XY Error: {}, {}".format(np.around(self.pose[0], 1), np.around(self.pose[1], 1)),
-                    (cX - 40, cY - 40),
+                    (self.cX - 40, self.cY - 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         # Draw contours on image
-        cv2.drawContours(self.detected_frame, [c], 0, (0, 255, 0), 3)
+        cv2.drawContours(self.detected_frame, [self.c], 0, (0, 255, 0), 3)
 
     def calculate_scale_factor(self, peri):
         # Find the distance to the platform
@@ -784,15 +792,6 @@ class ArucoTracker(MarkerTracker):
 
     def get_marker_rotation(self):
         return self.rvec
-
-    def get_pose_body_coords(self):
-        # Flip signs because aruco has bottom right and down as positive axis
-        pose = np.array([self.pose[0], -self.pose[1]])
-
-        # Convert camera resolution from pixels to meters; reshape from dimensions (1,2) to (2,)
-        cam_dimensions = self.scale_camera_dimensions()
-
-        return cam_dimensions / 2 - pose
 
     def scale_camera_dimensions(self):
         w = 2 * self.pose[2] * np.tan(72.5 * pi/180)
