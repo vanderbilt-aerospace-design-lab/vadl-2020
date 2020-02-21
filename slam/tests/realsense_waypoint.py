@@ -13,9 +13,9 @@ from slam import realsense_localization
 from marker_detection.camera import Realsense
 
 TAKEOFF_ALTITUDE = 0.5 # Meters
-NAV_X = 5
+NAV_X = 1
 NAV_Y = 0
-NAV_Z = 5
+NAV_Z = 1
 AIRSPEED = 0.25 # M/s
 
 #Set up option parsing to get connection string
@@ -24,7 +24,7 @@ parser.add_argument('-x', type=int, default=NAV_X,
                     help="Linear distance to fly.")
 parser.add_argument('-y', type=int, default=NAV_Y,
                     help="Linear distance to fly.")
-parser.add_argument('-z', type=int, default=NAV_X,
+parser.add_argument('-z', type=int, default=NAV_Z,
                     help="Linear distance to fly.")
 parser.add_argument('-s', '--speed', type=int, default=AIRSPEED,
                     help="Linear distance to fly.")
@@ -33,10 +33,13 @@ parser.add_argument('--rtl', type=int, default=0,
 
 args = vars(parser.parse_args())
 
+args["x"] *= 0.3048
+args["z"] *= 0.3048
+
 def main():
 
     # Connect to the Pixhawk
-    vehicle = dronekit_utils.connect_vehicle_args(args)
+    vehicle = dronekit_utils.connect_vehicle()
 
     rs = Realsense()
 
@@ -49,7 +52,7 @@ def main():
     time.sleep(10)
 
     # Set the UAV speed
-    vehicle.airspeed = 0.10
+    vehicle.airspeed = args["speed"]
 
     # Arm the UAV
     dronekit_utils.arm_realsense_mode(vehicle)
@@ -64,14 +67,17 @@ def main():
     dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                         forward=0,
                                                         right=0,
-                                                        down=args["z"])
+                                                        down=-args["z"])
+    
+    time.sleep(20)
 
     # Linear travel
     dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                         forward=args["x"],
                                                         right=0,
                                                         down=0)
-
+    
+    time.sleep(150)
     # Return to Launch
     if args["rtl"]:
         dronekit_utils.rtl(vehicle)
