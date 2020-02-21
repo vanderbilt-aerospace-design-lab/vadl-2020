@@ -154,7 +154,7 @@ def alt_hover(vehicle, pose_avg):
 # Detect a marker and hover above it. The vehicle will remain still until a marker is detected. Then it will approach
 # the marker at the current altitude until it is directly above the marker. Finally, the vehicle will ascend/descend
 # to the desired hovering altitude. If the marker has not been detected for a while, the function will return False.
-def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
+def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0, run_time=None):
 
     if hover_alt is None:
         hover_alt = vehicle.location.global_relative_frame.alt
@@ -175,7 +175,16 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
     time_found = time.time()
     print("Tracking marker...")
 
-    while dronekit_utils.is_guided(vehicle):
+    run_time_ongoing = True
+    well_positioned = False
+    run_time_start = time.time()
+
+    while dronekit_utils.is_guided(vehicle) and run_time_ongoing:
+
+        if run_time is None:
+            run_time_ongoing = not well_positioned
+        else:
+            run_time_ongoing = time.time() - run_time_start < run_time
 
         # Track marker
         marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
@@ -217,6 +226,8 @@ def marker_hover(vehicle, marker_tracker, rs=None, hover_alt=None, debug=0):
             if np.abs(pose_avg[0]) < HOVER_THRESHOLD and np.abs(pose_avg[1]) < HOVER_THRESHOLD:
                 #print("Marker Hover")
                 alt_hover(vehicle, pose_avg)
+                if np.abs(marker_pose_body_ref[2] - hover_alt) < 0.1:
+                    well_positioned = True
             else:
                 #print("Approaching Marker")
                 marker_approach(vehicle, pose_avg)

@@ -39,6 +39,20 @@ def set_active_cmd_str(cmd):
 	elif cmd == "CLOSE":
 		set_active_cmd_num(1, 1, 0)
 
+def lower_tool():
+	set_active_cmd_str("LOWER_MANUAL")
+
+def raise_tool():
+	set_active_cmd_str("RAISE_MANUAL")
+
+def open_tool():
+	set_active_cmd_str("OPEN")
+
+def close_tool():
+	set_active_cmd_str("CLOSE")
+
+def idle():
+	set_active_cmd_str("IDLE")
 
 # ----------------- #
 # --- MAIN CODE --- #
