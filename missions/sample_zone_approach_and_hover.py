@@ -4,7 +4,6 @@ UAV will takeoff to a set altitude, search for the sample zone, navigate to it, 
  sampling altitude'''
 
 import os
-import time
 import argparse
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -13,7 +12,7 @@ from utils import dronekit_utils, file_utils
 from slam import realsense_localization
 from marker_detection.marker_tracker import ArucoTracker, YellowMarkerTracker
 from marker_detection.camera import Realsense
-from marker_detection import marker_hover
+from marker_detection.marker_nav_utils import *
 
 TAKEOFF_ALTITUDE = 0.5 # Meters
 SEARCH_ALTITUDE = 0.7 # Meters
@@ -21,7 +20,7 @@ HOVER_ALTITUDE = 2 * 0.3048 # Meters
 DEFAULT_FREQ = 2 # Hz
 MARKER_LENGTH = 0.24
 
-VEHICLE_POSE_DIR = "marker_detection/pose_data"
+VEHICLE_POSE_DIR = "marker_detection/logs/pose_data"
 VEHICLE_POSE_BASE = "vehicle_pose"
 VEHICLE_POSE_FILE = file_utils.create_file_name_chronological(VEHICLE_POSE_DIR, VEHICLE_POSE_BASE, "txt")
 
@@ -96,14 +95,19 @@ def main():
     time.sleep(2)
 
     # Set the UAV speed
-    vehicle.airspeed = 0.10
+    vehicle.airspeed = 5
 
     # Search for sample zone
-    print("Searching for marker.")
-    marker_found = marker_hover.marker_search(vehicle, marker_tracker, SEARCH_ALTITUDE)
+    print("Initial Marker Search")
+    marker_found, marker_pose = marker_search_long_range(vehicle, marker_tracker, SEARCH_ALTITUDE)
 
     if marker_found:
-        marker_hover.marker_hover(vehicle, marker_tracker, rs, HOVER_ALTITUDE)
+
+        print("Approaching Marker")
+        marker_found = marker_approach(vehicle, marker_tracker, marker_pose)
+
+        if marker_found:
+            marker_hover(vehicle, marker_tracker, rs, HOVER_ALTITUDE)
 
     # Land the UAV
     dronekit_utils.land(vehicle)
