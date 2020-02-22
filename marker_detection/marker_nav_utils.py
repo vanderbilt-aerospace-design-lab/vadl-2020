@@ -124,10 +124,10 @@ def marker_search_long_range(vehicle, marker_tracker, search_alt=DEFAULT_SEARCH_
     marker_list = [] # Keep track of potential markers, how many times they've been detected, and their pose
 
     # Ascend to search altitude
-    dronekit_utils.move_relative_alt(vehicle, search_alt)
+    # dronekit_utils.move_relative_alt(vehicle, search_alt)
 
     # Wait until the vehicle reaches its search altitude
-    dronekit_utils.wait_for_nav_body_command(vehicle)
+    # dronekit_utils.wait_for_nav_body_command(vehicle)
 
     start_time = time.time()
 
@@ -135,7 +135,8 @@ def marker_search_long_range(vehicle, marker_tracker, search_alt=DEFAULT_SEARCH_
     while time.time() - start_time < MAX_SEARCH_TIME_LONG_RANGE:
 
         # Track marker
-        marker_tracker.track_marker_long_distance(alt=vehicle.location.global_relative_frame.alt)
+        # marker_tracker.track_marker_long_distance(alt=vehicle.location.global_relative_frame.alt)
+        marker_tracker.track_marker_long_distance(alt=30)
 
         if marker_tracker.is_marker_found():
 
@@ -196,7 +197,8 @@ def marker_search_close_range(vehicle, marker_tracker):
     while time.time() - start_time < MAX_SEARCH_TIME_CLOSE_RANGE:
 
         # Track marker
-        marker_tracker.track_marker_long_distance(alt=vehicle.location.global_relative_frame.alt)
+        # marker_tracker.track_marker_long_distance(alt=vehicle.location.global_relative_frame.alt)
+        marker_tracker.track_marker_long_distance(alt=30)
 
         if marker_tracker.is_marker_found():
             detected_count += 1
@@ -285,7 +287,8 @@ def marker_hover(vehicle, marker_tracker, hover_alt=None, debug=0):
     while dronekit_utils.is_guided(vehicle):
 
         # Track marker
-        marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
+        # marker_tracker.track_marker(alt=vehicle.location.global_relative_frame.alt)
+        marker_tracker.track_marker_long_distance(alt=30)
 
         if marker_tracker.is_marker_found():
 
