@@ -49,7 +49,7 @@ parser.add_argument('--pose_file', default=None,
 parser.add_argument('--marker_length', default=None,
                     help="Yellow marker side length")
 parser.add_argument('--realsense', default=True,
-                    help="Parameter that dictates whether running on realsense - True if so, False for GPS")
+                    help="Parameter that dictates whether running on realsense: True if so, False for GPS")
 
 args = vars(parser.parse_args())
 
