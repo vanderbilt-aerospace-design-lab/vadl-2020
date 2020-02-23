@@ -86,6 +86,7 @@ def marker_ref_to_body_ref(H_cam_ref_marker, marker_tracker, vehicle):
 
     # Transform to NED offset pose - AKA NED relative to UAV's current location
     # When using the Realsense, NED is equivalent to FRD (Forward Right Down)
+    # TODO: what is NED equivalent to when not using realsense
     ned_offset_pose = np.matmul(roll_transform, np.matmul(pitch_transform,
                                                     np.matmul(H_body_ref_cam_ref, np.append(H_cam_ref_marker, 1))))
 

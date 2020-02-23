@@ -9,6 +9,10 @@ from utils import dronekit_utils, file_utils
 from marker_detection.marker_tracker import YellowMarkerTracker, ArucoTracker
 from marker_detection.marker_hover import marker_hover, marker_search
 from feather_com.pi import manual_only
+from apscheduler.schedulers.background import BackgroundScheduler
+from slam import realsense_localization
+from marker_detection.camera import Realsense
+
 
 HOVER_ALTITUDE = 0.914 # Meters
 TAKEOFF_ALTITUDE = 1.5 # Meters
@@ -43,7 +47,9 @@ parser.add_argument('--pose_file', default=None,
                     help="Pose file name for debugging. Do not input directory, "
                          "just the file name w/ or w/o .txt at the end. If none specified, defaults to the current date.")
 parser.add_argument('--marker_length', default=None,
-                    help="yellow marker side length")
+                    help="Yellow marker side length")
+parser.add_argument('--realsense', default=True,
+                    help="Parameter that dictates whether running on realsense - True if so, False for GPS")
 
 args = vars(parser.parse_args())
 
@@ -85,11 +91,31 @@ def main():
     # Connect to the Pixhawk
     vehicle = dronekit_utils.connect_vehicle_args(args)
 
-    # Arm the UAV
-    dronekit_utils.arm(vehicle)
+    # Vary startup procedure according to realsense
+    if args["realsense"]:
+        rs = Realsense()
+
+        # Create a scheduler to send Mavlink commands in the background
+        sched = BackgroundScheduler()
+
+        # Begin realsense localization in the background
+        realsense_localization.start(vehicle, rs=rs, scheduler=sched)
+
+        time.sleep(10)
+
+        # Arm the UAV
+        dronekit_utils.arm_realsense_mode(vehicle)
+    else:
+        rs = None
+
+        # Arm the UAV
+        dronekit_utils.arm(vehicle)
 
     # Takeoff and fly to a target altitude
     dronekit_utils.takeoff(vehicle, TAKEOFF_ALTITUDE)
+
+    # Stabilize
+    time.sleep(2)
 
     # Search for marker
     print("Searching...")
@@ -101,23 +127,25 @@ def main():
     print("Centering...")
     if marker_found:
         # Approach desired sampling height
-        marker_hover(vehicle, marker_tracker, hover_alt=HOVER_ALTITUDE)
+        marker_hover(vehicle, marker_tracker, rs=rs, hover_alt=HOVER_ALTITUDE)
 
         # Perform air-based sampling
         print("Sampling...")
         manual_only.lower_tool()
-        marker_hover(vehicle, marker_tracker, hover_alt=HOVER_ALTITUDE, run_time=7)
+        marker_hover(vehicle, marker_tracker, rs=rs, hover_alt=HOVER_ALTITUDE, run_time=7)
         manual_only.idle()
 
         manual_only.close_tool()
-        marker_hover(vehicle, marker_tracker, hover_alt=HOVER_ALTITUDE, run_time=2)
+        marker_hover(vehicle, marker_tracker, rs=rs, hover_alt=HOVER_ALTITUDE, run_time=2)
         manual_only.raise_tool()
-        marker_hover(vehicle, marker_tracker, hover_alt=HOVER_ALTITUDE, run_time=8.25)
+        marker_hover(vehicle, marker_tracker, rs=rs, hover_alt=HOVER_ALTITUDE, run_time=8.25)
         manual_only.idle()
 
         # Navigate to Aruco - needs to be in sight from 3ft or we're sunk
         print("Leaving...")
-        marker_hover(vehicle, marker_tracker2, hover_alt=LAND_ALTITUDE)
+        marker_hover(vehicle, marker_tracker2, rs=rs, hover_alt=LAND_ALTITUDE)
+    else:
+        print("Not found...")
 
     # Land the UAV (imprecisely)
     print("Landing...")
