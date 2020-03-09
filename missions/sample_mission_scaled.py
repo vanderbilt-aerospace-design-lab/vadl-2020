@@ -92,30 +92,33 @@ def main():
     vehicle = dronekit_utils.connect_vehicle_args(args)
 
     # Vary startup procedure according to realsense
-    if args["realsense"]:
-        rs = Realsense()
+#    if args["realsense"]:
+#        rs = Realsense()
 
         # Create a scheduler to send Mavlink commands in the background
-        sched = BackgroundScheduler()
+#        sched = BackgroundScheduler()
 
         # Begin realsense localization in the background
-        realsense_localization.start(vehicle, rs=rs, scheduler=sched)
+#        realsense_localization.start(vehicle, rs=rs, scheduler=sched)
 
-        time.sleep(10)
-
-        # Arm the UAV
-        dronekit_utils.arm_realsense_mode(vehicle)
-    else:
-        rs = None
+#        time.sleep(10)
 
         # Arm the UAV
-        dronekit_utils.arm(vehicle)
+#        dronekit_utils.arm_realsense_mode(vehicle)
+#    else:
+#        rs = None
+
+    # Temporary code for non-flight testing
+    rs = None
+
+        # Arm the UAV
+#        dronekit_utils.arm(vehicle)
 
     # Takeoff and fly to a target altitude
-    dronekit_utils.takeoff(vehicle, TAKEOFF_ALTITUDE)
+#    dronekit_utils.takeoff(vehicle, TAKEOFF_ALTITUDE)
 
     # Stabilize
-    time.sleep(2)
+#    time.sleep(2)
 
     # Search for marker
     print("Searching...")
@@ -149,7 +152,7 @@ def main():
 
     # Land the UAV (imprecisely)
     print("Landing...")
-    dronekit_utils.land(vehicle)
+#    dronekit_utils.land(vehicle)
 
 
 if __name__ == "__main__":
