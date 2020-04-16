@@ -27,9 +27,9 @@ import numpy as np
 CB_COLS = 9
 CB_ROWS = 7
 CB_SQUARE_SIZE = 20 # mm
-IMG_SIZE = (640,480)
-OPEN_PATH = "./calibration_images_arducam/"
-SAVE_PATH = "calibration_parameters/arducam_1_11.yaml"
+IMG_SIZE = (640,480) # pixels
+OPEN_PATH = "./calibration_images_arducam/" # Calibration image directory
+SAVE_PATH = "calibration_parameters/arducam_1_11.yaml" # To save camera parameters
 
 # termination criteria for finding sub-pixel corner positions
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -89,10 +89,8 @@ for fname in fnames:
 cv2.destroyAllWindows()
 
 # Calibrate using the corner gps_data
-ret, mtx, dist, rvecs, tvecs = cv2.fisheye.calibrate(object_points, image_points, IMG_SIZE,
-                                                     None, None, flags=cv2.CALIB_ZERO_TANGENT_DIST)
-# ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, IMG_SIZE,
-#                                                    None, None, flags=cv2.CALIB_ZERO_TANGENT_DIST)
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, IMG_SIZE,
+                                                   None, None, flags=cv2.CALIB_ZERO_TANGENT_DIST)
 
 # Print results
 print("\n=========\n RESULTS\n=========\n")

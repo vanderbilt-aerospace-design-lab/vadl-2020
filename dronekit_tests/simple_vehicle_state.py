@@ -17,6 +17,7 @@ import time
 # Set up option parsing to get connection string
 import argparse
 CONNECTION_STRING = "/dev/ttyAMA0"
+
 # Connect to the Vehicle.
 #   Set `wait_ready=True` to ensure default attributes are populated before `connect()` returns.
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
