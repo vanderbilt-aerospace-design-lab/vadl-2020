@@ -2,7 +2,7 @@ import time
 import argparse
 from utils import dronekit_utils
 
-''' Test script for auto reboot and reconnection'''
+### Test script for auto reboot and reconnection ### 
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')

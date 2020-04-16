@@ -3,9 +3,9 @@ import time
 import dronekit_sitl
 import argparse
 
-''' Test script for auto takeoff and landing'''
+### Test script for auto takeoff and landing ###
 
-TARGET_ALTITUDE = 1 # Meters
+TARGET_ALTITUDE = 1 # Meters; Takeoff to this altitude
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
@@ -26,58 +26,45 @@ else:
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
 vehicle = connect(CONNECTION_STRING, wait_ready=True, baud=921600)
 
-# # Vehicle callback to enable manual override
-# @vehicle.on_attribute('mode')
-# def decorated_mode_callback(self, attr_name, value):
-#     # `attr_name` is the observed attribute (used if callback is used for multiple attributes)
-#     # `attr_name` - the observed attribute (used if callback is used for multiple attributes)
-#     # `value` is the updated attribute value.
-#     print(" CALLBACK: Mode changed to", value)
-#
-#     # Close vehicle object before exiting script
-#     print("Closing vehicle object")
-#     vehicle.close()
-#     exit(0)
+# Arms the vehicle and flys to a target altitude
+def arm_and_takeoff(target_altitude):
+    
+    print("Basic pre-arm checks")
 
-
-def arm_and_takeoff(aTargetAltitude):
-    """
-    Arms vehicle and fly to aTargetAltitude.
-    """
-
-    print "Basic pre-arm checks"
     # Don't try to arm until autopilot is ready
     while not vehicle.is_armable:
-        print " Waiting for vehicle to initialise..."
+        print("Waiting for vehicle to initialise...")
         time.sleep(1)
 
-    print "Arming motors"
-    # Copter should arm in GUIDED mode
+    print("Arming motors")
+
+    # Copter should ALWAYS arm in GUIDED mode
     vehicle.mode = VehicleMode("GUIDED")
-    vehicle.armed = True
+    vehicle.armed = True # Arm the vehicle
 
-    # Confirm vehicle armed before attempting to take off
+    # Confirm the vehicle is armed before attempting to take off
     while not vehicle.armed:
-        print " Waiting for arming..."
+        print("Waiting for arming...")
         time.sleep(1)
 
-    print "Taking off!"
-    vehicle.simple_takeoff(aTargetAltitude) # Take off to target altitude
+    print("Taking off!")
+    vehicle.simple_takeoff(target_altitude) # Take off to target altitude
 
     # Wait until the vehicle reaches a safe height before processing the goto (otherwise the command
     #  after Vehicle.simple_takeoff will execute immediately).
     while True:
-        print " Altitude: ", vehicle.location.global_relative_frame.alt
+        print("Altitude: ", vehicle.location.global_relative_frame.alt)
 
         # Break and return from function just below target altitude.
-        if vehicle.location.global_relative_frame.alt >= aTargetAltitude * 0.95:
-            print "Reached target altitude"
+        if vehicle.location.global_relative_frame.alt >= target_altitude * 0.95:
+            print("Reached target altitude")
             break
         time.sleep(1)
 
 
+# Land the UAV directly below where it is hovering
 def land():
-    print "Landing..."
+    print("Landing...")
     vehicle.mode = VehicleMode("LAND")
 
     # Close vehicle object before exiting script
@@ -86,8 +73,15 @@ def land():
 
 
 def main():
+
+    # Arm the vehicle and takeoff to the desired altitude
     arm_and_takeoff(TARGET_ALTITUDE)
+
+    # Sleep; Dronekit will not wait for commands to finish before sending another.
+    # You must pause the script long enough to finish commands
     time.sleep(15)
+
+    # Land directly below where the UAV is hovering
     land()
 
 

@@ -15,6 +15,7 @@ from dronekit import connect, VehicleMode
 import time
 
 CONNECTION_STRING = "/dev/ttyAMA0"
+
 # Connect to the Vehicle.
 #   Set `wait_ready=True` to ensure default attributes are populated before `connect()` returns.
 print("\nConnecting to vehicle on: %s" % CONNECTION_STRING)
@@ -80,7 +81,6 @@ while not vehicle.home_location:
 print("\n Home location: %s" % vehicle.home_location)
 
 # Set vehicle home_location, mode, and armed attributes (the only settable attributes)
-
 print("\nSet new home location")
 # Home location must be within 50km of EKF home location (or setting will fail silently)
 # In this case, just set value to current location with an easily recognisable altitude (222)
@@ -108,19 +108,10 @@ while not vehicle.is_armable:
     # If required, you can provide additional information about initialisation
     # using `vehicle.gps_0.fix_type` and `vehicle.mode.name`.
 
-# print "\nSet Vehicle.armed=True (currently: %s)" % vehicle.armed
-# vehicle.armed = True
-# while not vehicle.armed:
-#    print " Waiting for arming..."
-#    time.sleep(1)
-# print " Vehicle is armed: %s" % vehicle.armed
-
-
 # Add and remove and attribute callbacks
 
 # Define callback for `vehicle.attitude` observer
 last_attitude_cache = None
-
 
 def attitude_callback(self, attr_name, value):
     # `attr_name` - the observed attribute (used if callback is used for multiple attributes)
@@ -131,7 +122,6 @@ def attitude_callback(self, attr_name, value):
     if value != last_attitude_cache:
         print(" CALLBACK: Attitude changed to", value)
         last_attitude_cache = value
-
 
 print("\nAdd `attitude` attribute callback/observer on `vehicle`")
 vehicle.add_attribute_listener('attitude', attitude_callback)

@@ -3,8 +3,23 @@ import time
 import argparse
 from utils import dronekit_utils
 
-TARGET_ALTITUDE = 2 # Meters
-AIRSPEED = 1
+### ------------------------------------------------------------------------------- ###
+#
+# This script will takeoff the UAV, fly to a specified location, and then return to origin and land.
+# This uses the UAV body reference frame, which will usually be the desired reference frame for autonomous navigation.
+# Refer to "../utils/dronekit_utils.py" for more documentation.
+#
+### ------------------------------------------------------------------------------- ###
+
+TARGET_ALTITUDE = 2 # Meters; Takeoff to this altitude
+AIRSPEED = 1 # UAV flight speed; m/s
+
+# Set the desired position to move to relative to the current UAV position.
+# Ex: POSITION_FORWARD = 3, POSITION_RIGHT = 5, POSITION_DOWN = 0 will move the UAV 
+# 3 meters forward and 5 meters right (diagonally in real life).
+POSITION_FORWARD = 3
+POSITION_RIGHT = 0
+POSITION_DOWN = 0
 
 #Set up option parsing to get connection string
 parser = argparse.ArgumentParser(description='Record GPS and Realsense data.')
@@ -13,24 +28,21 @@ parser.add_argument('--sitl',
 
 args = vars(parser.parse_args())
 
+# Navigate the UAV to a specified location
 def simple_goto(vehicle):
+
     print("Set default/target airspeed to {} m/s".format(AIRSPEED))
     vehicle.airspeed = AIRSPEED
-    print(vehicle.location.local_frame)
 
-    # Move 3 m forward
-    dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=3, right=0, down=0)
-    time.sleep(10)
+    # Move the UAV
+    dronekit_utils.goto_position_target_body_offset_ned(vehicle, 
+                                                        forward=POSITION_FORWARD, 
+                                                        right=POSITION_RIGHT, 
+                                                        down=POSITION_FORWARD)
 
-    print(vehicle.location.local_frame)
-
-    # Move 3 m right
-    dronekit_utils.goto_position_target_body_offset_ned(vehicle, forward=0, right=3, down=0)
-    time.sleep(10)
-
-    print(vehicle.location.local_frame)
 
 def main():
+
     # Connect to the Pixhawk
     vehicle = dronekit_utils.connect_vehicle_args(args)
 
@@ -43,7 +55,11 @@ def main():
     # Takeoff
     dronekit_utils.takeoff(vehicle, TARGET_ALTITUDE)
 
+    # Move the UAV
     simple_goto(vehicle)
+
+    # Wait for the navigation command to complete
+    time.sleep(10)
 
     # Return to Launch
     dronekit_utils.rtl(vehicle)

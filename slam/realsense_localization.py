@@ -1,4 +1,27 @@
- # Set the path for IDLE
+### --------------------------------------------------------------------------------------------- ###
+# This script receives position estimates from the Intel Realsense T265 sensor 
+# and sends them to the Pixhawk. The Pixhawk can then use these pose estimates to 
+# localize and achieve extremely stable flight. 
+
+# Pose estimates are sent to the Pixhawk using the VISION_POSITION_ESTIMATE MAVLink message.
+# Messages are sent at 30 Hz so to not flood the Pixhawk with messages.  
+
+# The Pixhawk must be configured for SLAM flight. Refer to the README in this section
+# for instructions.
+
+# This script has been modified based on https://github.com/thien94/vision_to_mavros/blob/master/scripts/t265_to_mavlink.py
+
+# These tutorials are fantastic for getting the Pixhawk and Realsense set up:
+# Getting Started: https://discuss.ardupilot.org/t/integration-of-ardupilot-and-vio-tracking-camera-part-1-getting-started-with-the-intel-realsense-t265-on-rasberry-pi-3b/43162
+# Realsense <-> Pixhawk communication: https://discuss.ardupilot.org/t/integration-of-ardupilot-and-vio-tracking-camera-part-4-non-ros-bridge-to-mavlink-in-python/44001
+# ROS version: https://discuss.ardupilot.org/t/integration-of-ardupilot-and-vio-tracking-camera-part-2-complete-installation-and-indoor-non-gps-flights/43405
+
+# The other parts of those tutorials are also helpful for debugging problems and additional info.
+
+### --------------------------------------------------------------------------------------------- ###
+
+
+# Set the path for IDLE
 import sys
 sys.path.append("/usr/local/lib/")
 
@@ -15,21 +38,17 @@ import threading
 from threading import Thread
 from apscheduler.schedulers.background import BackgroundScheduler
 
+# Custom libraries
 from utils import dronekit_utils, file_utils
 from marker_detection.camera import Realsense
 
-# 0 is sideways 45 degrees
-# 1 is forward facing
-# 2 is downward facing
-# 3 is sideways downward, usb towards the front
-REALSENSE_ORIENTATION = 3
+DATA_DIR = "slam/data" # Save pose and vibration data
+RS_FILE_BASE = "rs_pose" # Base pose file name
+ACCEL_FILE_BASE = "rs_accel" # Base vibration data file name
 
-DATA_DIR = "slam/data"
-RS_FILE_BASE = "rs_pose"
-ACCEL_FILE_BASE = "rs_accel"
+# Create pose and vibration files
 RS_POSE_FILE = file_utils.create_file_name_chronological(DATA_DIR, RS_FILE_BASE, "txt")
 RS_ACCEL_FILE = file_utils.create_file_name_chronological(DATA_DIR, ACCEL_FILE_BASE, "txt")
-# pose files to save to
 rs_pose_file = file_utils.open_file(RS_POSE_FILE)
 rs_accel_file = file_utils.open_file(RS_ACCEL_FILE)
 
@@ -37,20 +56,37 @@ rs_accel_file = file_utils.open_file(RS_ACCEL_FILE)
 # Parameters
 #######################################
 
-# Default configurations for connection to the FCU
-vision_msg_hz = 30.0
-confidence_msg_hz = 1
+## Realsense Orientation ##
+# This parameter controls the pose transform used to conver the pose estimate
+# in the Realsense reference frame to the UAV body frame. It depends on how the sensor
+# is mounted on the UAV. We have found the best results with forward facing and downward facing, 
+# and tracking failure in large-scale environments at 45 degrees.
+# 0: Sideways (rel. to UAV front) 45 degrees, USB towards the front
+# 1 is forward facing (cameras perpendicular to ground), USB towards the right
+# 2 is downward facing (cameras facing the ground), USB towards the right
+# 3 is sideways downward, USB towards the front
+REALSENSE_ORIENTATION = 3
 
-# In NED frame, offset from the IMU or the center of gravity to the camera's origin point
+# Default configurations for connection to the Pixhawk FCU
+vision_msg_hz = 30.0
+confidence_msg_hz = 1 
+
+# In NED frame, offset from the IMU or the center of gravity to the Realsense origin point
 body_offset_enabled = 0
 body_offset_x = 0.05    # In meters (m), so 0.05 = 5cm
 body_offset_y = 0       # In meters (m)
 body_offset_z = 0       # In meters (m)
 
 # Global scale factor, position x y z will be scaled up/down by this factor
+# NOTE: This has not been tested by VADL, but will probably be required for 
+# long-distance flight in outdoor environments. There is a lot of pose drift over time,
+# so it would be a good idea to empirically determine the drift over different distances traveled
+# and create a variable scale factor.
 scale_factor = 1.0
 
 # Enable using yaw from compass to align north (zero degree is facing north)
+# This is not necessary, but is helpful if you would like to visualize the UAV's trajectory
+# on a Ground Control Station like Mission Planner.
 compass_enabled = 0
 
 # Default global position of home/ origin
@@ -66,23 +102,22 @@ debug_enable = 0
 # pose data confidence: 0x0 - Failed / 0x1 - Low / 0x2 - Medium / 0x3 - High
 pose_data_confidence_level = ('Failed', 'Low', 'Medium', 'High')
 
-''' Realsense to NED pose transform, upside down and rotated 45 degrees
-0: NED Origin
-1: RS Origin
-2: NED Frame
-3: RS Frame
+### Realsense to NED pose transform, upside down and rotated 45 degrees ###
+# 0: NED Origin
+# 1: RS Origin
+# 2: NED Frame
+# 3: RS Frame
 
-H0_2: NED Frame rel. to NED origin (pose sent to Pixhawk)
-H0_1: RS Origin rel. to NED Origin
-H1_3: RS Frame rel. to RS Origin (pose received from Realsense)
-H3_2: NED Frame rel. to RS Frame
+# H0_2: NED Frame rel. to NED origin (pose sent to Pixhawk)
+# H0_1: RS Origin rel. to NED Origin
+# H1_3: RS Frame rel. to RS Origin (pose received from Realsense)
+# H3_2: NED Frame rel. to RS Frame
 
-H0_2 = H0_1.dot(H1_3).dot(H3_2)
+# H0_2 = H0_1.dot(H1_3).dot(H3_2)
 
-H3_2 = H3_A.dot(HA_B).dot(HB_2)
-Broken up into a 180 deg. flip about z (A), 45 deg rotation about x (B) and 
-left hand to right hand coord. system change.
-'''
+# H3_2 = H3_A.dot(HA_B).dot(HB_2)
+# Broken up into a 180 deg. flip about z (A), 45 deg rotation about x (B) and 
+# left hand to right hand coord. system change.
 if REALSENSE_ORIENTATION == 0:
 
     # Upside down, rotated 45 degrees, sideways mount
