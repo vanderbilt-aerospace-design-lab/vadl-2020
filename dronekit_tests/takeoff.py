@@ -8,7 +8,7 @@ import argparse
 TARGET_ALTITUDE = 1 # Meters; Takeoff to this altitude
 
 #Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Control Copter and send commands in GUIDED mode ')
+parser = argparse.ArgumentParser(description='Test guided takeoff')
 parser.add_argument('--sitl',
                    help="Vehicle connection target string. If specified, SITL will be used.")
 args = parser.parse_args()

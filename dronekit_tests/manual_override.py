@@ -12,7 +12,7 @@ import argparse
 TARGET_ALTITUDE = 2 # Meters; Takeoff to this altitude
 
 #Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Record GPS and Realsense data.')
+parser = argparse.ArgumentParser(description='Test manual override.')
 parser.add_argument('--sitl',
                    help="Vehicle connection target string. If specified, SITL will be used.")
 

@@ -1,7 +1,17 @@
-''' Sample zone approach and hover
+### --------------------------------------------------------------------- ###
+# 
+# This script commands the UAV to takeoff, fly to a defined distance, and 
+# return to its origin and land. This is done in SLAM mode.
+# Call the script with the correct args to set the flight path.
+# 
+# Example: 
+#
+# sudo python3 slam/tests/realsense_waypoint.py -x 120 -y 10 -z 2
+# 
+# This will first fly the UAV 2 meters UP, then 120 meters forward, 
+# and then 10 meters right
+### --------------------------------------------------------------------- ###
 
-UAV will takeoff to a set altitude, search for the sample zone, navigate to it, and descend to the desired
- sampling altitude'''
 
 import time
 import argparse
@@ -12,14 +22,15 @@ from utils import dronekit_utils
 from slam import realsense_localization
 from marker_detection.camera import Realsense
 
-TAKEOFF_ALTITUDE = 0.5 # Meters
-NAV_X = 1
-NAV_Y = 0
-NAV_Z = 1
+# Follows body reference frame (Forward, Right, Down)
+TAKEOFF_ALTITUDE = 0.5 # Meters; Takeoff to this altitude
+NAV_X = 1 # Meters; Default fly forward (+ve)
+NAV_Y = 0 # Meters; Default fly to the right (+ve)
+NAV_Z = 1 # Meters; Default fly down (+ve)
 AIRSPEED = 0.25 # M/s
 
-#Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Fly a UAV to a set altitude and hover over a marker.')
+#Set up arg parsing
+parser = argparse.ArgumentParser(description='Fly a UAV in SLAM mode a set distance and RTL.')
 parser.add_argument('-x', type=int, default=NAV_X,
                     help="Linear distance to fly.")
 parser.add_argument('-y', type=int, default=NAV_Y,
@@ -33,22 +44,22 @@ parser.add_argument('--rtl', type=int, default=0,
 
 args = vars(parser.parse_args())
 
-args["x"] *= 0.3048
-args["z"] *= 0.3048
 
 def main():
 
     # Connect to the Pixhawk
     vehicle = dronekit_utils.connect_vehicle()
 
+    # Create a Realsense object
     rs = Realsense()
 
     # Create a scheduler to send Mavlink commands in the background
     sched = BackgroundScheduler()
 
-    # Begin realsense localization in the background
+    # Start SLAM
     realsense_localization.start(vehicle, rs=rs, scheduler=sched)
 
+    # Wait for SLAM to initialize
     time.sleep(10)
 
     # Set the UAV speed
@@ -71,14 +82,22 @@ def main():
     
     time.sleep(20)
 
-    # Linear travel
+    # Linear travel forward
     dronekit_utils.goto_position_target_body_offset_ned(vehicle,
                                                         forward=args["x"],
                                                         right=0,
                                                         down=0)
+
+    # Linear travel right
+    dronekit_utils.goto_position_target_body_offset_ned(vehicle,
+                                                        forward=0,
+                                                        right=args["y"],
+                                                        down=0)
     
+    # Wait for UAV to move
     time.sleep(150)
-    # Return to Launch
+
+    # Return to Launch or Land
     if args["rtl"]:
         dronekit_utils.rtl(vehicle)
     else:

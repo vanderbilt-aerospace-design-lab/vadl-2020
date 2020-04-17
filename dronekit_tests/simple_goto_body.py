@@ -22,7 +22,7 @@ POSITION_RIGHT = 0
 POSITION_DOWN = 0
 
 #Set up option parsing to get connection string
-parser = argparse.ArgumentParser(description='Record GPS and Realsense data.')
+parser = argparse.ArgumentParser(description='Test simple navigation commands')
 parser.add_argument('--sitl',
                    help="Vehicle connection target string. If specified, SITL will be used.")
 

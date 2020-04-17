@@ -2,6 +2,3 @@ camera_calibration/calibration_images_*
 *.pyc
 flight_videos/
 .idea/
-*.jpg
-*.png
-*.txt

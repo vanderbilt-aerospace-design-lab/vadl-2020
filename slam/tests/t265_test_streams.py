@@ -1,7 +1,7 @@
-#####################################################
-##          librealsense T265 streams test         ##
-#####################################################
-# This assumes .so file is found on the same directory
+### ------------------------------------------------ ###
+#          librealsense T265 streams test         
+### ------------------------------------------------ ###
+
 import pyrealsense2 as rs
 
 # Prettier prints for reverse-engineering
