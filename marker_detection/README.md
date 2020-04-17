@@ -12,7 +12,9 @@ used to detect the yellow tarp and then marker pose estimation is performed. Aru
 - [simple_pi_record.py](simple_pi_record.py): Even simpler recording script just for the Pi.
 
 An example of the sample zone detection pipeline.
+
 ![Sample zone detection pipeline](../images/sample_zone_detection.png)
 
 An example of Aruco precision landing.
+
 ![Aruco precision landing](../images/aruco_precision_land.gif)
