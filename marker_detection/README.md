@@ -15,4 +15,4 @@ An example of the sample zone detection pipeline.
 ![Sample zone detection pipeline](../images/sample_zone_detection.png)
 
 An example of Aruco precision landing.
-![Aruco precision landing](../images/aruco_precision_landing.gif)
+![Aruco precision landing](../images/aruco_precision_land.gif)
