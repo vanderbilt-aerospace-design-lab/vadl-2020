@@ -26,13 +26,38 @@ The photos below show the UAV in action during a flight test. The right photo sh
 ![UAV air-based sampling and landing](images/payload_action_shot.png)
 
 
-# Autonomy
+## Autonomy
 
 VADL has developed software for UAV autonomous flight using both GPS and [SLAM](https://en.wikipedia.org/wiki/Simultaneous_localization_and_mapping) localization. GPS is great because it's already available for most drones and doesn't require much work to implement. The downside is that it can only localize the drone within a few meters accuracy. SLAM is a method of localizing the UAV in an unknown environment without any external aids, such as GPS. 
 
-ELABORATE MORE HERE. Maybe put the state machine and break down the mission sequence?
+The mission sequence is broken down into 6 stages.
 
-# Project Status
+![UAV Mission Sequence](images/uav_mission_sequence.png)
 
-Due to the coronavirus pandemic, the in-person NASA competition was canceled. Fortunately, the team has already finished building the rocket and UAV and has successfully performed a fullscale launch and sample collection mission. GPs-based autonomy has been implemented, but SLAM autonomy is still in development. We have demonstrated extremely stable indoor SLAM flight and have flown outdoors with moderate amounts of our drift. Some of our results can be seen [here].
+A state machine is used to model the autonomous mission sequence.
+
+![State Machine](images/state_machine.png)
+
+
+
+## Repository Structure
+
+- *camera_calibration:* Calibration scripts for pinhole and fisheye cameras.  
+- *docs*: Additional documentation about our development process.
+- *dronekit_tests:*  Test various [Dronekit](https://dronekit-python.readthedocs.io/en/latest/) navigation commands.  
+- *feather_com:* Sampling tool wireless communication code.  
+- *marker_detection:* Image processing for color and Aruco markers.  
+- *slam:* Implements V-SLAM to stabilize and control the UAV.  
+- *utils:* Utility functions for wireless communication, dronekit, and files.
+
+## Project Status
+
+All marker tracking image processing algorithms have been tested and completed. GPS-based autonomous navigation has been implemented and SLAM autonomous flight is nearly complete. We have demonstrated extremely stable indoor SLAM flight and have flown outdoors with moderate amounts of our drift. One of our flights can be seen below. The UAV autonomously takes off, travels 120 feet, and returns to its origin to land. Landing has been demonstrated with approximately 5 cm accuracy. Precision landing with Aruco markers has also been demonstrated. The Initialization, Sample Zone Search, and Landing stages of the state machine have been implemented.
+
+![SLAM autonomous flight and precision landing](images/rtl_flight.gif)
+
+Due to the coronavirus pandemic, the in-person NASA competition was canceled and all continuing work on this project has ended. Fortunately, the team has already finished building the rocket and UAV and has successfully performed a fullscale launch and sample collection mission. 
+
+## Future Work
+The real challenge of future work will be to extend the length of outdoor autonomous SLAM flights. We have observed drift of up to 20 feet after flying only 250 feet. If the Intel Realsense continues to be used, the only option is to fully characterize the expected drift and add in scale factors to deal with this limitation. VADL could also look into alternative SLAM methods (perhaps [ORB-SLAM](https://webdiis.unizar.es/~raulmur/orbslam/), [VINS-mono](https://github.com/HKUST-Aerial-Robotics/VINS-Mono)) that may perform better. 
 
