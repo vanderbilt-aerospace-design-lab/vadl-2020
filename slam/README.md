@@ -47,11 +47,11 @@ There a few steps that must be completed to set up the Pixhawk to receive pose d
 - COMPASS_USE2 = 0
 - COMPASS_USE3 = 0
 
-The Pixhawk may have issues arming with all these parameters. We have received compass alignment errors, related to the fact that the Pixhawk is receiving very different compass readings from the Realsense and the actual compass (not sure that COMPASS_USE successfully disables the compass). To solve this, COMPASS_USE was set to 1 to trick the Pixhawk pre-arm checks, and the compass still wasn't used. 
+The Pixhawk may have issues arming with all these parameters. We have received compass alignment errors, related to the fact that the Pixhawk is receiving very different compass readings from the Realsense and the actual compass (I'm not sure that COMPASS_USE actually disables the compass). To solve this, we set COMPASS_USE to 1 to trick the Pixhawk pre-arm checks. With this set, the Pixhawk still doesn't use the compass so all is well.  
 
 ## UAV Reference Frames
 
-The only work that you will (probably) have to do yourself is figure out the pose transformation from the Realsense coordinate system to the UAV body coordinate system. This is dependent on the Realsense mounting orientation. There are a few transformations already in [realsense_localization.py](realsense_localization.py) but you can add youre own if necessary. This pose transformation is necessary because the Pixhawk handles all localization and navigation commands within the NED reference frame. If the Realsense pose was sent straight to the Pixhawk, it would misinterpret all the commands. 
+The only work that you will (probably) have to do yourself is figure out the pose transformation from the Realsense coordinate system to the UAV body coordinate system. This is dependent on the Realsense mounting orientation. There are a few transformations already in [realsense_localization.py](realsense_localization.py) but you can add your own if necessary. This pose transformation is necessary because the Pixhawk handles all localization and navigation commands within the NED reference frame. If the Realsense pose was sent straight to the Pixhawk, it would misinterpret all the commands. 
 
 Included pose transformations:
 - Forward facing, USB towards the right
@@ -69,26 +69,26 @@ The Realsense coordinate system is shown below. The y-axis is always aligned wit
 
 Now to the transformation. First define the axes:
 
-$0:$ NED Origin Frame  
-$1:$ Realsense (RS) Origin Frame  
-$2:$ UAV NED coord. system  
-$3:$ RS coord. system  
+0: NED Origin Frame  
+1: Realsense (RS) Origin Frame  
+2: UAV NED coord. system  
+3: RS coord. system  
 
-Now define the matrices that describe the reference frames relative to each other. The convention $H^X_Y$ means defining the Y frame relative to the X frame:
+Now define the matrices that describe the reference frames relative to each other. The convention HX_Y means defining the Y frame relative to the X frame:
 
-$H^0_2:$ UAV NED frame relative to NED origin (this is the pose we want to send to the Pixhawk)
+H0_2: UAV NED frame relative to NED origin (this is the pose we want to send to the Pixhawk)
 
-$H^0_1:$ RS Origin relative to NED origin
+H0_1: RS Origin relative to NED origin
 
-$H^1_3:$ RS Frame relative to RS Origin (this is the pose received from the Realsense)
+H1_3: RS Frame relative to RS Origin (this is the pose received from the Realsense)
 
-$H^3_2:$ NED Frame relative to RS Frame
+H3_2: NED Frame relative to RS Frame
 
-First we receive $H^1_3$ from the Realsense. We then multiply this by $H^3_2$ to get the pose in the NED frame relative to the RS origin. Next, convert the RS origin to the NED origin by multiplying by $H^0_1$. The full equation becomes: 
+First we receive H1_3 from the Realsense. We then multiply this by H3_2 to get the pose in the NED frame relative to the RS origin. Next, convert the RS origin to the NED origin by multiplying by H0_1. The full equation becomes: 
 
-$$
-H^0_2 = H^0_1 \cdot H^1_3 \cdot H^3_2
-$$
+
+H0_2 = H0_1.dot(H1_3.dot(H3_2))
+
 
 ### Downward-Facing Initialization Problems
 
